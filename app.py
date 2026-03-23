@@ -73,6 +73,15 @@ def create_app():
     # --- Attach database to app ---
     db.init_app(app)
 
+    # Automatically create tables and a default admin on startup (ideal for Render zero-config deploys)
+    with app.app_context():
+        db.create_all()
+        if not Admin.query.first():
+            default_admin = Admin(username="admin")
+            default_admin.set_password("admin123")
+            db.session.add(default_admin)
+            db.session.commit()
+
     # =========================================================================
     # CLI COMMANDS
     # =========================================================================

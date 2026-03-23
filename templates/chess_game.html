@@ -347,7 +347,14 @@ function renderPanel(){
 // ═══════════════════════════════════════════════════
 function handleClick(r,c){
   if(gameState.status!=='active')return;
-  if(currentTurn!==myColor)return; // Enforce turn order: player can only move if it's their color's turn
+  if(currentTurn!==myColor){
+     const sb=document.getElementById('status-bar');
+     const oldText=sb.textContent;
+     sb.textContent="⚠ Not your turn!";
+     sb.style.color="var(--chess-gold)";
+     setTimeout(()=>{sb.textContent=oldText; sb.style.color="";}, 1500);
+     return;
+  }
   
   const move=legalMovesCache.find(m=>m.toR===r&&m.toC===c);
   if(move){

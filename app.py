@@ -526,21 +526,30 @@ def create_app():
                 "all_done":     all_done,
             })
 
-        # Can we generate a new round?
-        # YES if: there are approved, non-eliminated players and
-        #         all matches in the current round are done (or no rounds yet)
-        active_players = Player.query.filter_by(is_approved=True, is_eliminated=False).count()
-        current_round_done = (
-            max_round == 0 or
-            (rounds_data and rounds_data[-1]["all_done"])
-        )
-        can_generate = active_players >= 2 and current_round_done
+        # Determine how many players are available to be paired right now
+        active_matches = Match.query.filter(Match.status.in_(["pending", "in_progress"])).all()
+        busy_player_ids = set()
+        for m in active_matches:
+            if m.player1_id: busy_player_ids.add(m.player1_id)
+            if m.player2_id: busy_player_ids.add(m.player2_id)
+
+        if busy_player_ids:
+            available_players_count = Player.query.filter(
+                Player.is_approved == True, 
+                Player.is_eliminated == False,
+                Player.id.notin_(busy_player_ids)
+            ).count()
+        else:
+            available_players_count = Player.query.filter_by(is_approved=True, is_eliminated=False).count()
+
+        can_generate = available_players_count >= 2
 
         return render_template(
             "admin_matches.html",
             rounds_data       = rounds_data,
             current_round     = max_round,
-            active_players    = active_players,
+            active_players    = Player.query.filter_by(is_approved=True, is_eliminated=False).count(),
+            available_players = available_players_count,
             can_generate      = can_generate,
         )
 
@@ -550,86 +559,88 @@ def create_app():
     @admin_required
     def admin_generate_round():
         """
-        Generates the next round of knockout matches.
-
-        Algorithm:
-          1. Get all approved, non-eliminated players.
-          2. Shuffle them randomly for fair pairing.
-          3. Pair them up: (player[0] vs player[1]), (player[2] vs player[3]), ...
-          4. If odd number of players, last player gets a bye (auto-advance).
-          5. Save all Match records to the database.
+        Generates matches for available players.
+        Allows staggered generation (pairing winners early without waiting for all matches to finish).
         """
-        max_round      = db.session.query(db.func.max(Match.round_number)).scalar() or 0
-        next_round_num = max_round + 1
+        # Find players who are currently in a match
+        active_matches = Match.query.filter(Match.status.in_(["pending", "in_progress"])).all()
+        busy_player_ids = set()
+        for m in active_matches:
+            if m.player1_id: busy_player_ids.add(m.player1_id)
+            if m.player2_id: busy_player_ids.add(m.player2_id)
 
-        # Check all current round matches are done before generating new round
-        if max_round > 0:
-            unfinished = Match.query.filter(
-                Match.round_number == max_round,
-                Match.status.notin_(["completed", "bye"])
-            ).count()
-            if unfinished > 0:
-                flash(
-                    f"⚠️ Cannot generate Round {next_round_num}: "
-                    f"Round {max_round} still has {unfinished} unfinished match(es).",
-                    "danger"
-                )
-                return redirect(url_for("admin_matches"))
+        # Get all active (approved, not eliminated) players who are NOT busy
+        if busy_player_ids:
+            available_players = Player.query.filter(
+                Player.is_approved == True, 
+                Player.is_eliminated == False,
+                Player.id.notin_(busy_player_ids)
+            ).all()
+        else:
+            available_players = Player.query.filter(
+                Player.is_approved == True, 
+                Player.is_eliminated == False
+            ).all()
 
-        # Get all active (approved, not eliminated) players
-        active_players = Player.query.filter_by(
-            is_approved=True, is_eliminated=False
-        ).all()
-
-        if len(active_players) < 2:
-            flash("❌ Need at least 2 active players to generate a round.", "danger")
+        if len(available_players) < 2:
+            flash("❌ Need at least 2 available players to generate pairings. Wait for more matches to finish.", "warning")
             return redirect(url_for("admin_matches"))
 
         # Shuffle for random fair pairing
-        random.shuffle(active_players)
-
-        # Determine round label
-        n = len(active_players)
-        if   n >= 16: label = f"Round of {n}"
-        elif n == 8:  label = "Quarter-Finals"
-        elif n == 4:  label = "Semi-Finals"
-        elif n == 2:  label = "Final"
-        else:         label = f"Round {next_round_num}"
+        random.shuffle(available_players)
+        
+        total_active_overall = Player.query.filter_by(is_approved=True, is_eliminated=False).count()
 
         new_matches = []
-        for i in range(0, len(active_players) - 1, 2):
+        for i in range(0, len(available_players) - 1, 2):
+            p1 = available_players[i]
+            p2 = available_players[i + 1]
+            
+            p1_matches = Match.query.filter((Match.player1_id == p1.id) | (Match.player2_id == p1.id)).count()
+            p2_matches = Match.query.filter((Match.player1_id == p2.id) | (Match.player2_id == p2.id)).count()
+            next_round_num = max(p1_matches, p2_matches) + 1
+            
+            label = f"Round {next_round_num}"
+            if total_active_overall <= 8 and total_active_overall > 4: label = "Quarter-Finals"
+            elif total_active_overall <= 4 and total_active_overall > 2: label = "Semi-Finals"
+            elif total_active_overall == 2: label = "Final"
+
             m = Match(
                 round_number = next_round_num,
                 round_label  = label,
-                player1_id   = active_players[i].id,
-                player2_id   = active_players[i + 1].id,
+                player1_id   = p1.id,
+                player2_id   = p2.id,
                 status       = "pending",
             )
             new_matches.append(m)
 
-        # Handle odd player — give last player a bye
-        if len(active_players) % 2 != 0:
-            bye_player = active_players[-1]
-            bye_match  = Match(
-                round_number = next_round_num,
-                round_label  = label,
-                player1_id   = bye_player.id,
-                player2_id   = None,    # NULL = bye
-                winner_id    = bye_player.id,
-                status       = "bye",
-                notes        = "Bye — auto-advanced to next round.",
-            )
-            new_matches.append(bye_match)
+        # Handle odd player — give last player a bye ONLY if there are no active matches left
+        if len(available_players) % 2 != 0:
+            if len(active_matches) == 0:
+                bye_player = available_players[-1]
+                bp_matches = Match.query.filter((Match.player1_id == bye_player.id) | (Match.player2_id == bye_player.id)).count()
+                next_round_num = bp_matches + 1
+                
+                label = f"Round {next_round_num}"
+                if total_active_overall <= 8 and total_active_overall > 4: label = "Quarter-Finals"
+                elif total_active_overall <= 4 and total_active_overall > 2: label = "Semi-Finals"
+                
+                bye_match  = Match(
+                    round_number = next_round_num,
+                    round_label  = label + " (BYE)",
+                    player1_id   = bye_player.id,
+                    player2_id   = None,
+                    winner_id    = bye_player.id,
+                    status       = "bye",
+                    notes        = "Bye — auto-advanced.",
+                )
+                new_matches.append(bye_match)
 
         for m in new_matches:
             db.session.add(m)
 
         db.session.commit()
-        flash(
-            f"🏆 {label} generated! {len(new_matches)} match(es) created "
-            f"for Round {next_round_num}.",
-            "success"
-        )
+        flash(f"🏆 {len(new_matches)} new match(es) created!", "success")
         return redirect(url_for("admin_matches"))
 
     # -------------------------------------------------------------------------

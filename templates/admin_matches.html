@@ -27,23 +27,20 @@
       <div class="row align-items-center">
         <div class="col">
           <h5 class="mb-1">
-            {% if current_round == 0 %}
-              Generate Round 1
-            {% else %}
-              Generate Round {{ current_round + 1 }}
-            {% endif %}
+            Generate Matches
           </h5>
           <p class="text-muted mb-0 small">
-            Active players (approved, not yet eliminated):
-            <strong class="chess-gold">{{ active_players }}</strong>
+            Players in the tournament: <strong class="chess-gold">{{ active_players }}</strong>
+            &nbsp;·&nbsp;
+            Available to pair now: <strong class="chess-gold">{{ available_players }}</strong>
             &nbsp;·&nbsp;
             {% if can_generate %}
               <span class="text-success">Ready to pair!</span>
             {% elif active_players < 2 %}
-              <span class="text-danger">Need at least 2 active players.</span>
+              <span class="text-danger">Need at least 2 active players to run a tournament.</span>
             {% else %}
               <span class="text-warning">
-                Finish all matches in Round {{ current_round }} first.
+                Not enough available players to pair right now. Wait for matches to finish.
               </span>
             {% endif %}
           </p>
@@ -53,9 +50,8 @@
             <button type="submit"
                     class="btn chess-btn-primary"
                     {{ 'disabled' if not can_generate else '' }}
-                    onclick="return confirm('Generate pairings for the next round? This cannot be undone.')">
-              <i class="bi bi-shuffle"></i>
-              {% if current_round == 0 %}Generate Round 1{% else %}Generate Round {{ current_round + 1 }}{% endif %}
+                    onclick="return confirm('Generate pairings for available players? This cannot be undone.')">
+              <i class="bi bi-shuffle"></i> Generate Matches
             </button>
           </form>
         </div>

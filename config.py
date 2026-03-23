@@ -26,7 +26,7 @@ DEBUG = True
 # -----------------------------------------------------------------------------
 
 TOURNAMENT_NAME     = "College Chess Championship 2025"
-COLLEGE_NAME        = "Your College Name"
+COLLEGE_NAME = "Bengaluru City University"
 TIME_CONTROL        = "10+0 Rapid (10 minutes, no increment)"
 TOURNAMENT_FORMAT   = "Single-Elimination Knockout"
 ORGANIZER_NAME      = "Chess Club"

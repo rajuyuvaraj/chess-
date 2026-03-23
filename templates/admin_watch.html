@@ -47,8 +47,8 @@
     </div>
     <div class="spec-panel">
       <h6 class="text-muted small text-uppercase mb-2">Match Info</h6>
-      <p class="mb-1"><strong>♔ White:</strong> {{ player_white }}</p>
-      <p class="mb-1"><strong>♚ Black:</strong> {{ player_black }}</p>
+      <p class="mb-1"><strong>♔ White:</strong> {{ player_white }} <span id="timer-white" class="badge bg-dark ms-2" style="font-family: monospace; font-size: 1rem">10:00</span></p>
+      <p class="mb-1"><strong>♚ Black:</strong> {{ player_black }} <span id="timer-black" class="badge bg-dark ms-2" style="font-family: monospace; font-size: 1rem">10:00</span></p>
       <p class="mb-1"><strong>Moves:</strong> <span id="move-count">0</span></p>
       <p class="mb-0"><strong>Turn:</strong> <span id="turn">White</span></p>
     </div>
@@ -61,6 +61,37 @@ const PIECES={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:
 const matchId='{{ match_id }}', stateUrl='/match/'+matchId+'/state';
 const pWhite='{{ player_white }}', pBlack='{{ player_black }}';
 let lastMoveCount=-1, lastMoveStr=null;
+let timers = {white: 600000, black: 600000};
+let lastMoveAt = null;
+let currentTurn = 'white';
+let matchStatus = 'in_progress';
+
+function formatTime(ms) {
+  if (ms <= 0) return "00:00";
+  const s = Math.ceil(ms / 1000);
+  const min = Math.floor(s / 60);
+  const sec = s % 60;
+  return min.toString().padStart(2, '0') + ':' + sec.toString().padStart(2, '0');
+}
+
+function updateClocks() {
+  if (matchStatus !== 'in_progress') return;
+  if (!lastMoveAt) return; 
+
+  let wTime = timers.white;
+  let bTime = timers.black;
+  const elapsed = Date.now() - new Date(lastMoveAt).getTime();
+  
+  if (currentTurn === 'white') wTime -= elapsed;
+  else bTime -= elapsed;
+  
+  if (wTime < 0) wTime = 0;
+  if (bTime < 0) bTime = 0;
+  
+  document.getElementById('timer-white').textContent = formatTime(wTime);
+  document.getElementById('timer-black').textContent = formatTime(bTime);
+}
+setInterval(updateClocks, 100);
 
 function renderBoard(boardState,lastMove,currentTurn){
   const el=document.getElementById('board');el.innerHTML='';
@@ -98,6 +129,8 @@ async function poll(){
     const res=await fetch(stateUrl);const d=await res.json();
     if(d.move_count!==lastMoveCount||d.status!=='in_progress'){
       lastMoveCount=d.move_count;
+      currentTurn=d.current_turn;
+      matchStatus=d.status;
       renderBoard(d.board_state,d.last_move,d.current_turn);
       renderMoves(d.move_history);
       document.getElementById('move-count').textContent=d.move_count;
@@ -106,6 +139,12 @@ async function poll(){
       if(d.status==='completed'){sb.textContent='✓ Match Complete';sb.style.color='#4caf50';
         document.getElementById('live-badge').style.display='none';
       }else{sb.textContent=(d.current_turn==='white'?'White':'Black')+' to Move';}
+      
+      try {
+          const s = JSON.parse(d.board_state);
+          if (s.timers) timers = s.timers;
+          if (s.gameState && s.gameState.lastMoveAt) lastMoveAt = s.gameState.lastMoveAt;
+      } catch(e) {}
     }
   }catch(e){}
 }

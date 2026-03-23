@@ -20,6 +20,8 @@
 .player-bar{display:flex;align-items:center;gap:.5rem;padding:.6rem .75rem;border-radius:8px;background:var(--chess-surface-2)}
 .player-bar .name{font-family:'Playfair Display',serif;font-weight:700;font-size:1rem;color:var(--chess-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
 .player-bar .captured{font-size:.85rem;margin-left:auto;letter-spacing:1px;min-width:0;word-break:break-all}
+.timer{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;background:rgba(0,0,0,0.3);padding:0.2rem 0.6rem;border-radius:4px;margin-left:1rem;color:var(--chess-text)}
+.timer.danger{color:#ff5252;animation:pulse 1s infinite}
 .player-bar.active-turn{border:2px solid var(--chess-gold);box-shadow:0 0 12px rgba(212,168,67,.25)}
 .status-bar{text-align:center;font-weight:700;font-size:1.05rem;padding:.5rem;border-radius:8px;color:var(--chess-gold);background:var(--chess-surface-2);font-family:'Inter',sans-serif}
 .status-bar.in-check{color:#ff5252}.status-bar.game-over{color:#4caf50}
@@ -72,10 +74,10 @@
       <div class="board-grid" id="board"></div>
     </div>
     <div class="side-panel">
-      <div class="player-bar" id="bar-top"><span class="name" id="name-top"></span><span class="captured" id="cap-top"></span></div>
+      <div class="player-bar" id="bar-top"><span class="name" id="name-top"></span><span class="timer" id="timer-top">10:00</span><span class="captured" id="cap-top"></span></div>
       <div class="status-bar" id="status-bar">White to Move</div>
       <div class="move-history" id="move-log"><table><thead><tr><th>#</th><th>White</th><th>Black</th></tr></thead><tbody id="move-tbody"></tbody></table></div>
-      <div class="player-bar" id="bar-bottom"><span class="name" id="name-bottom"></span><span class="captured" id="cap-bottom"></span></div>
+      <div class="player-bar" id="bar-bottom"><span class="name" id="name-bottom"></span><span class="timer" id="timer-bottom">10:00</span><span class="captured" id="cap-bottom"></span></div>
       <div id="btn-area">
         <button class="chess-game-btn danger" id="resign-btn" onclick="showResignModal()">⚑ Resign</button>
       </div>
@@ -119,7 +121,7 @@ const playerWhiteName=cfg.white, playerBlackName=cfg.black, matchId=cfg.matchId,
 
 let board, currentTurn, enPassantTarget, castlingRights, moveHistory;
 let capturedPieces, selectedSquare, legalMovesCache, lastMove, pendingPromotion;
-let gameState;
+let gameState, timers;
 
 // ═══════════════════════════════════════════════════
 // SECTION 2: BOARD SETUP
@@ -132,7 +134,8 @@ function initFreshGame(){
   castlingRights={whiteKingside:true,whiteQueenside:true,blackKingside:true,blackQueenside:true};
   moveHistory=[]; capturedPieces={white:[],black:[]};
   selectedSquare=null; legalMovesCache=[]; lastMove=null; pendingPromotion=null;
-  gameState={status:'active',result:null,startedAt:new Date().toISOString(),lastMoveAt:null};
+  gameState={status:'active',result:null,startedAt:new Date().toISOString(),lastMoveAt:new Date().toISOString()};
+  timers={white: 600000, black: 600000}; // 10 minutes in ms
 }
 
 // ═══════════════════════════════════════════════════
@@ -239,6 +242,9 @@ function executeMove(move){
   if(move.toR===0&&move.toC===7)castlingRights.blackKingside=false;if(move.toR===0&&move.toC===0)castlingRights.blackQueenside=false;
   enPassantTarget=move.doublePush?[(move.fromR+move.toR)/2,move.toC]:null;
   lastMove={fromR:move.fromR,fromC:move.fromC,toR:move.toR,toC:move.toC};
+  const elapsed = gameState.lastMoveAt ? Date.now() - new Date(gameState.lastMoveAt).getTime() : 0;
+  timers[currentTurn] = Math.max(0, timers[currentTurn] - elapsed);
+
   const nextColor=currentTurn==='white'?'black':'white';
   const check=isKingInCheck(nextColor), hasMove=playerHasAnyLegalMove(nextColor);
   const notation=toAlgebraic(move,piece,captured||move.enPassant,check,check&&!hasMove);
@@ -257,7 +263,7 @@ function executeMove(move){
 // SECTION 6: PERSISTENCE — localStorage save/load
 // ═══════════════════════════════════════════════════
 function saveGameState(){
-  const snapshot={board,currentTurn,moveHistory,capturedPieces,castlingRights,enPassantTarget,lastMove,gameState};
+  const snapshot={board,currentTurn,moveHistory,capturedPieces,castlingRights,enPassantTarget,lastMove,gameState,timers};
   try{localStorage.setItem('match_'+matchId,JSON.stringify(snapshot));}catch(e){}
   // Also sync to server for live spectating & multiplayer
   const lastN=moveHistory.length?moveHistory[moveHistory.length-1]:null;
@@ -274,6 +280,7 @@ function loadGameState(){
     const s=JSON.parse(raw);
     board=s.board;currentTurn=s.currentTurn;moveHistory=s.moveHistory;capturedPieces=s.capturedPieces;
     castlingRights=s.castlingRights;enPassantTarget=s.enPassantTarget;lastMove=s.lastMove;gameState=s.gameState;
+    timers=s.timers||{white:600000,black:600000};
     selectedSquare=null;legalMovesCache=[];pendingPromotion=null;
     return true;
   }catch(e){return false;}
@@ -413,6 +420,7 @@ function autoSubmitAndShowResult(){
   const r=gameState.result;
   if(r.method==='checkmate'){title.textContent='♛ CHECKMATE';desc.textContent=(r.winner==='white'?playerWhiteName:playerBlackName)+' Wins!';}
   else if(r.method==='stalemate'){title.textContent='½ STALEMATE';desc.textContent='The game is a draw.';}
+  else if(r.method==='timeout'){title.textContent='⏱ TIMEOUT';desc.textContent=(r.winner==='white'?playerWhiteName:playerBlackName)+' Wins on Time!';}
   else{title.textContent='⚑ RESIGNATION';desc.textContent=(r.winner==='white'?playerWhiteName:playerBlackName)+' Wins by Resignation!';}
   statusEl.textContent='Submitting result…';
   fetch(submitUrl,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -428,6 +436,45 @@ function autoSubmitAndShowResult(){
 function startNewGame(){
   document.getElementById('result-modal').classList.remove('active');
   initFreshGame();renderAll();
+}
+
+function formatTime(ms) {
+  if (ms <= 0) return "00:00";
+  const s = Math.ceil(ms / 1000);
+  const min = Math.floor(s / 60);
+  const sec = s % 60;
+  return min.toString().padStart(2, '0') + ':' + sec.toString().padStart(2, '0');
+}
+
+function updateClocks() {
+  if (gameState.status !== 'active') return;
+  if (!gameState.lastMoveAt) return; 
+
+  let wTime = timers.white;
+  let bTime = timers.black;
+  const elapsed = Date.now() - new Date(gameState.lastMoveAt).getTime();
+  
+  if (currentTurn === 'white') wTime -= elapsed;
+  else bTime -= elapsed;
+  
+  if (wTime <= 0) { wTime = 0; handleTimeout('white'); }
+  if (bTime <= 0) { bTime = 0; handleTimeout('black'); }
+  
+  document.getElementById('timer-bottom').textContent = formatTime(myColor === 'black' ? bTime : wTime);
+  document.getElementById('timer-top').textContent = formatTime(myColor === 'black' ? wTime : bTime);
+  
+  document.getElementById('timer-bottom').classList.toggle('danger', (myColor === 'black' ? bTime : wTime) < 30000 && (myColor === 'black' ? bTime : wTime) > 0);
+  document.getElementById('timer-top').classList.toggle('danger', (myColor === 'black' ? wTime : bTime) < 30000 && (myColor === 'black' ? wTime : bTime) > 0);
+}
+
+function handleTimeout(colorOut) {
+  if (gameState.status !== 'active') return;
+  // Only the person who is online and sees the timeout should submit it to avoid double-submit
+  gameState.status = 'finished';
+  gameState.result = { winner: colorOut === 'white' ? 'black' : 'white', method: 'timeout' };
+  saveGameState();
+  renderAll();
+  autoSubmitAndShowResult();
 }
 
 // ═══════════════════════════════════════════════════
@@ -458,7 +505,6 @@ function startNewGame(){
             }
           } catch(e) {}
         } else if (data.status==='completed' && gameState.status==='active') {
-            // Opponent resigned or drew, and we didn't get the board state updates
             gameState.status='finished';
             gameState.result={method:'Server completion', winner:data.winner_id};
             renderAll();
@@ -467,6 +513,9 @@ function startNewGame(){
       }).catch(()=>{});
     }
   }, 3000);
+  
+  // Update clocks continuously 
+  setInterval(updateClocks, 100);
 })();
 </script>
 {% endblock %}

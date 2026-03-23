@@ -58,7 +58,7 @@
 </style>
 {% endblock %}
 {% block content %}
-<div id="game-config" data-white="{{ player_white }}" data-black="{{ player_black }}" data-match-id="{{ match_id }}" data-submit-url="{{ url_for('submit_match_result', match_id=match_id) }}" style="display:none"></div>
+<div id="game-config" data-white="{{ player_white }}" data-black="{{ player_black }}" data-match-id="{{ match_id }}" data-submit-url="{{ url_for('submit_match_result', match_id=match_id) }}" data-my-color="{{ my_color }}" style="display:none"></div>
 
 <!-- Resume Banner (hidden by default) -->
 <div class="resume-banner" id="resume-banner" style="display:none">
@@ -115,7 +115,7 @@
 const PIECES={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
 const PIECE_VAL={P:1,N:3,B:3,R:5,Q:9,K:0};
 const cfg=document.getElementById('game-config').dataset;
-const playerWhiteName=cfg.white, playerBlackName=cfg.black, matchId=cfg.matchId, submitUrl=cfg.submitUrl;
+const playerWhiteName=cfg.white, playerBlackName=cfg.black, matchId=cfg.matchId, submitUrl=cfg.submitUrl, myColor=cfg.myColor;
 
 let board, currentTurn, enPassantTarget, castlingRights, moveHistory;
 let capturedPieces, selectedSquare, legalMovesCache, lastMove, pendingPromotion;
@@ -259,11 +259,11 @@ function executeMove(move){
 function saveGameState(){
   const snapshot={board,currentTurn,moveHistory,capturedPieces,castlingRights,enPassantTarget,lastMove,gameState};
   try{localStorage.setItem('match_'+matchId,JSON.stringify(snapshot));}catch(e){}
-  // Also sync to server for live spectating (fire-and-forget)
+  // Also sync to server for live spectating & multiplayer
   const lastN=moveHistory.length?moveHistory[moveHistory.length-1]:null;
   const lastNotation=lastN?(lastN.black||lastN.white):'';
   fetch('/match/'+matchId+'/move',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({board_state:JSON.stringify(board),move_history:JSON.stringify(moveHistory),
+    body:JSON.stringify({board_state:JSON.stringify(snapshot),move_history:JSON.stringify(moveHistory),
       last_move:lastNotation,current_turn:currentTurn,move_count:moveHistory.length})
   }).catch(()=>{});
 }
@@ -328,6 +328,13 @@ function renderPanel(){
     else if(r.method==='resignation')sb.textContent='⚑ '+(r.winner==='white'?playerBlackName:playerWhiteName)+' Resigned';
   }else if(isKingInCheck(currentTurn)){sb.classList.add('in-check');sb.textContent='⚠ '+(currentTurn==='white'?'White':'Black')+' is in Check!';}
   else sb.textContent=(currentTurn==='white'?'White':'Black')+' to Move';
+  
+  if (currentTurn !== myColor && gameState.status === 'active') {
+    sb.textContent += " (Waiting for opponent...)";
+  } else if (currentTurn === myColor && gameState.status === 'active') {
+    sb.textContent += " (Your turn)";
+  }
+
   const tbody=document.getElementById('move-tbody');tbody.innerHTML='';
   moveHistory.forEach((m,i)=>{const tr=document.createElement('tr');if(i===moveHistory.length-1)tr.className='current-move';tr.innerHTML='<td>'+(i+1)+'</td><td>'+m.white+'</td><td>'+(m.black||'')+'</td>';tbody.appendChild(tr);});
   document.getElementById('move-log').scrollTop=9999;
@@ -340,13 +347,15 @@ function renderPanel(){
 // ═══════════════════════════════════════════════════
 function handleClick(r,c){
   if(gameState.status!=='active')return;
+  if(currentTurn!==myColor)return; // Enforce turn order: player can only move if it's their color's turn
+  
   const move=legalMovesCache.find(m=>m.toR===r&&m.toC===c);
   if(move){
     if(move.promotion){pendingPromotion=move;showPromoModal(currentTurn);return;}
     executeMove(move);return;
   }
   const piece=board[r][c];
-  if(piece&&piece.color===currentTurn){selectedSquare=[r,c];legalMovesCache=getLegalMoves(r,c);renderAll();}
+  if(piece&&piece.color===currentTurn&&currentTurn===myColor){selectedSquare=[r,c];legalMovesCache=getLegalMoves(r,c);renderAll();}
   else{selectedSquare=null;legalMovesCache=[];renderAll();}
 }
 function showPromoModal(color){
@@ -426,6 +435,31 @@ function startNewGame(){
   }else{
     initFreshGame();renderAll();
   }
+
+  // Poll for opponent's moves
+  setInterval(()=>{
+    if(gameState.status==='active' && currentTurn!==myColor) {
+      fetch('/match/'+matchId+'/state').then(x=>x.json()).then(data=>{
+        if(data.current_turn===myColor && data.board_state) {
+          try {
+            const s = JSON.parse(data.board_state);
+            if(s && s.board) {
+               board=s.board; currentTurn=s.currentTurn; moveHistory=s.moveHistory;
+               capturedPieces=s.capturedPieces; castlingRights=s.castlingRights;
+               enPassantTarget=s.enPassantTarget; lastMove=s.lastMove; gameState=s.gameState;
+               renderAll();
+            }
+          } catch(e) {}
+        } else if (data.status==='completed' && gameState.status==='active') {
+            // Opponent resigned or drew, and we didn't get the board state updates
+            gameState.status='finished';
+            gameState.result={method:'Server completion', winner:data.winner_id};
+            renderAll();
+            autoSubmitAndShowResult();
+        }
+      }).catch(()=>{});
+    }
+  }, 3000);
 })();
 </script>
 {% endblock %}

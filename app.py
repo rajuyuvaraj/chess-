@@ -773,6 +773,7 @@ def create_app():
 
         player_white = Player.query.get(match.player1_id)
         player_black = Player.query.get(match.player2_id) if match.player2_id else None
+        my_color = "white" if player_id == match.player1_id else "black"
 
         return render_template(
             "chess_game.html",
@@ -780,6 +781,7 @@ def create_app():
             player_white=player_white.chess_username if player_white else "White",
             player_black=player_black.chess_username if player_black else "Black",
             match_id=match_id,
+            my_color=my_color,
         )
 
     @app.route("/match/<int:match_id>/submit", methods=["POST"])

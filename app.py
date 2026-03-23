@@ -247,13 +247,6 @@ def create_app():
 
     # -------------------------------------------------------------------------
 
-    @app.route("/bracket")
-    def bracket():
-        """Bracket page — embeds the Challonge iframe."""
-        return render_template("bracket.html", challonge_url=CHALLONGE_EMBED_URL)
-
-    # -------------------------------------------------------------------------
-
     @app.route("/fixtures")
     def fixtures():
         """Public page showing all match fixtures grouped by round."""

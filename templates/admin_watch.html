@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Spectating — {{ player_white }} vs {{ player_black }}{% endblock %}
+{% block extra_css %}
+<style>
+.spec-layout{max-width:900px;margin:2rem auto;padding:0 1rem}
+.spec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(224,92,92,0.2);color:#f08080;font-weight:700;font-size:.85rem;padding:.4rem .8rem;border-radius:20px;animation:pulse 1.5s infinite}
+.live-badge .dot{width:8px;height:8px;border-radius:50%;background:#f08080;animation:pulse 1.5s infinite}
+.spec-board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid var(--chess-border);border-radius:4px;overflow:hidden;width:min(80vw,520px);height:min(80vw,520px);margin:0 auto}
+.sq{display:flex;align-items:center;justify-content:center;font-size:min(7vw,48px);user-select:none;position:relative}
+.sq.lt{background:#f0d9b5}.sq.dk{background:#b58863}
+.sq.last{background:rgba(255,255,100,0.25)!important}
+.sq.chk{animation:check-pulse .8s infinite}
+@keyframes check-pulse{0%,100%{background:rgba(220,50,50,.5)}50%{background:rgba(220,50,50,.85)}}
+.pw{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6)}.pb{color:#1a1a2e;text-shadow:0 1px 3px rgba(255,255,255,.25)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.spec-info{display:flex;gap:1.5rem;margin-top:1.5rem;flex-wrap:wrap}
+.spec-panel{flex:1;min-width:200px;background:var(--chess-surface);border:1px solid var(--chess-border);border-radius:12px;padding:1rem}
+.spec-moves{max-height:200px;overflow-y:auto;font-family:'IBM Plex Mono',monospace;font-size:.82rem;color:var(--chess-text)}
+.spec-status{text-align:center;font-weight:700;font-size:1.05rem;padding:.5rem;border-radius:8px;color:var(--chess-gold);background:var(--chess-surface-2);margin-top:1rem}
+@media(max-width:768px){.spec-board{width:min(96vw,480px);height:min(96vw,480px)}.spec-info{flex-direction:column}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="spec-layout">
+  <div class="spec-header">
+    <div>
+      <h2 class="chess-section-title mb-0">
+        <span style="font-family:'IBM Plex Mono',monospace">{{ player_white }}</span>
+        <span class="text-muted mx-2">vs</span>
+        <span style="font-family:'IBM Plex Mono',monospace">{{ player_black }}</span>
+      </h2>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="live-badge" id="live-badge"><span class="dot"></span>LIVE</span>
+      <a href="{{ url_for('admin_dashboard') }}" class="btn chess-btn-outline btn-sm">← Dashboard</a>
+    </div>
+  </div>
+
+  <div class="spec-board" id="board"></div>
+  <div class="spec-status" id="status">Loading…</div>
+
+  <div class="spec-info">
+    <div class="spec-panel">
+      <h6 class="text-muted small text-uppercase mb-2">Move History</h6>
+      <div class="spec-moves" id="moves">Waiting for data…</div>
+    </div>
+    <div class="spec-panel">
+      <h6 class="text-muted small text-uppercase mb-2">Match Info</h6>
+      <p class="mb-1"><strong>♔ White:</strong> {{ player_white }}</p>
+      <p class="mb-1"><strong>♚ Black:</strong> {{ player_black }}</p>
+      <p class="mb-1"><strong>Moves:</strong> <span id="move-count">0</span></p>
+      <p class="mb-0"><strong>Turn:</strong> <span id="turn">White</span></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const PIECES={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+const matchId='{{ match_id }}', stateUrl='/match/'+matchId+'/state';
+const pWhite='{{ player_white }}', pBlack='{{ player_black }}';
+let lastMoveCount=-1, lastMoveStr=null;
+
+function renderBoard(boardState,lastMove,currentTurn){
+  const el=document.getElementById('board');el.innerHTML='';
+  if(!boardState)return;
+  let board;
+  try{board=JSON.parse(boardState);}catch(e){return;}
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const sq=document.createElement('div');
+    sq.className='sq '+((r+c)%2===0?'lt':'dk');
+    const p=board[r][c];
+    if(p){const key=p.color==='white'?p.type:p.type.toLowerCase();
+      const sp=document.createElement('span');sp.textContent=PIECES[key];
+      sp.className=p.color==='white'?'pw':'pb';sq.appendChild(sp);
+      if(p.type==='K'&&p.color===currentTurn){/* check highlight handled below */}
+    }
+    el.appendChild(sq);
+  }
+}
+
+function renderMoves(moveHistoryStr){
+  let hist;try{hist=JSON.parse(moveHistoryStr);}catch(e){return;}
+  const el=document.getElementById('moves');
+  if(!hist.length){el.textContent='No moves yet.';return;}
+  let html='<table style="width:100%"><tr><th style="width:30px">#</th><th>W</th><th>B</th></tr>';
+  hist.forEach((m,i)=>{html+='<tr><td>'+(i+1)+'</td><td>'+(m.white||'')+'</td><td>'+(m.black||'')+'</td></tr>';});
+  html+='</table>';el.innerHTML=html;el.scrollTop=9999;
+}
+
+async function poll(){
+  try{
+    const res=await fetch(stateUrl);const d=await res.json();
+    if(d.move_count!==lastMoveCount||d.status!=='in_progress'){
+      lastMoveCount=d.move_count;
+      renderBoard(d.board_state,d.last_move,d.current_turn);
+      renderMoves(d.move_history);
+      document.getElementById('move-count').textContent=d.move_count;
+      document.getElementById('turn').textContent=d.current_turn==='white'?'White':'Black';
+      const sb=document.getElementById('status');
+      if(d.status==='completed'){sb.textContent='✓ Match Complete';sb.style.color='#4caf50';
+        document.getElementById('live-badge').style.display='none';
+      }else{sb.textContent=(d.current_turn==='white'?'White':'Black')+' to Move';}
+    }
+  }catch(e){}
+}
+poll();
+setInterval(poll,3000);
+</script>
+{% endblock %}

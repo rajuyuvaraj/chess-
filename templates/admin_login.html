@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Admin Login — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-4 col-md-6">
+
+        <div class="text-center mb-4">
+          <div class="chess-form-icon admin">♚</div>
+          <h1 class="chess-section-title">Admin Access</h1>
+          <p class="text-muted">Tournament management portal</p>
+        </div>
+
+        <div class="chess-card chess-admin-card">
+          <form method="POST" action="{{ url_for('admin_login') }}">
+
+            <div class="mb-3">
+              <label for="username" class="form-label fw-semibold">
+                <i class="bi bi-person-lock"></i> Username
+              </label>
+              <input
+                type="text"
+                class="form-control chess-input"
+                id="username"
+                name="username"
+                placeholder="Admin username"
+                required
+                autofocus
+              />
+            </div>
+
+            <div class="mb-4">
+              <label for="password" class="form-label fw-semibold">
+                <i class="bi bi-lock-fill"></i> Password
+              </label>
+              <input
+                type="password"
+                class="form-control chess-input"
+                id="password"
+                name="password"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn chess-btn-admin btn-lg">
+                <i class="bi bi-shield-lock-fill"></i> &nbsp; Enter Admin Panel
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        <p class="text-center mt-3 text-muted small">
+          Students:
+          <a href="{{ url_for('student_login') }}" class="chess-link">
+            Log in here →
+          </a>
+        </p>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Fixtures — {{ tournament_name }}{% endblock %}
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    {# Header #}
+    <div class="text-center mb-5">
+      <h1 class="chess-display-title mb-2">
+        <i class="bi bi-diagram-3 chess-gold"></i> Tournament Fixtures
+      </h1>
+      <p class="chess-lead mx-auto">
+        {% if active_players == 1 %}
+          🏆 Tournament Complete — Champion Crowned!
+        {% elif current_round > 0 %}
+          Round {{ current_round }} · {{ active_players }} players remaining
+        {% else %}
+          No rounds generated yet.
+        {% endif %}
+      </p>
+    </div>
+
+    {# Rounds #}
+    {% for rd in rounds_data|reverse %}
+    <div class="mb-5">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <h3 class="chess-section-title mb-0">Round {{ rd.round_number }}</h3>
+        {% if rd.all_done %}
+          <span class="badge bg-success">Complete ✓</span>
+        {% elif rd.round_number == current_round %}
+          <span class="badge bg-danger">Current</span>
+        {% endif %}
+      </div>
+
+      <div class="row g-3">
+        {% for m in rd.matches %}
+        <div class="col-md-6 col-lg-4">
+          <div class="fixture-card {% if m.status == 'completed' %}completed{% elif m.status == 'in_progress' %}live{% elif m.status == 'bye' %}bye{% endif %}">
+            {# Status badge #}
+            <div class="fixture-badge-row">
+              {% if m.status == 'pending' %}
+                <span class="fixture-badge pending">⏳ PENDING</span>
+              {% elif m.status == 'in_progress' %}
+                <span class="fixture-badge live"><span class="live-dot"></span> LIVE</span>
+              {% elif m.status == 'completed' %}
+                <span class="fixture-badge completed">✓ COMPLETED</span>
+              {% elif m.status == 'bye' %}
+                <span class="fixture-badge bye">↑ BYE</span>
+              {% endif %}
+            </div>
+
+            {# Players #}
+            <div class="fixture-players">
+              <div class="fixture-player {% if m.winner_id == m.player1_id %}fw-bold text-success{% endif %}">
+                <span class="chess-mono">{{ m.player1.chess_username }}</span>
+                <span class="small text-muted d-block">{{ m.player1.full_name }}</span>
+              </div>
+              {% if m.player2 %}
+              <div class="fixture-vs">VS</div>
+              <div class="fixture-player {% if m.winner_id == m.player2_id %}fw-bold text-success{% endif %}">
+                <span class="chess-mono">{{ m.player2.chess_username }}</span>
+                <span class="small text-muted d-block">{{ m.player2.full_name }}</span>
+              </div>
+              {% else %}
+              <div class="fixture-vs">BYE</div>
+              <div class="fixture-player text-muted"><em>Auto-advance</em></div>
+              {% endif %}
+            </div>
+
+            {# Winner #}
+            {% if m.winner %}
+            <div class="fixture-winner">
+              <i class="bi bi-trophy-fill chess-gold"></i>
+              {{ m.winner.full_name }}
+            </div>
+            {% endif %}
+
+            {# Action buttons #}
+            {% if m.status == 'in_progress' %}
+              {% if session.get('student_id') in [m.player1_id, m.player2_id] %}
+                <a href="{{ url_for('play_match', match_id=m.id) }}" class="btn chess-btn-primary btn-sm w-100 mt-2">♟ Play Match</a>
+              {% elif session.get('admin_logged_in') %}
+                <a href="{{ url_for('admin_watch', match_id=m.id) }}" class="btn chess-btn-outline btn-sm w-100 mt-2">👁 Watch Live</a>
+              {% endif %}
+            {% endif %}
+
+            {% if m.notes %}
+            <div class="fixture-notes"><small class="text-muted">{{ m.notes }}</small></div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="chess-card text-center py-5">
+      <i class="bi bi-hourglass fs-1 chess-gold"></i>
+      <p class="mt-3 text-muted">No fixtures have been generated yet. Check back after the admin creates the first round.</p>
+    </div>
+    {% endfor %}
+
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — {{ tournament_name }}{% endblock %}
+{% block extra_css %}
+<meta http-equiv="refresh" content="30">
+{% endblock %}
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    {# Header #}
+    <div class="text-center mb-4">
+      <h1 class="chess-display-title mb-2">🏆 Tournament Leaderboard</h1>
+      <p class="chess-lead mx-auto">
+        {% if active_players == 1 and players %}
+          <span class="chess-gold fw-bold">♛ {{ players[0].full_name }} is the Champion!</span>
+        {% elif current_round > 0 %}
+          Round {{ current_round }} · {{ active_players }} players remaining
+        {% else %}
+          Tournament has not started yet.
+        {% endif %}
+      </p>
+    </div>
+
+    {# Champion banner #}
+    {% if active_players == 1 and players %}
+    <div class="champion-banner mb-4">
+      <div class="champion-icon">♔</div>
+      <h2 class="champion-name">{{ players[0].full_name }}</h2>
+      <p class="champion-sub chess-mono">@{{ players[0].chess_username }}</p>
+      <p class="champion-stats">{{ players[0].wins }} wins · {{ players[0].losses }} losses</p>
+    </div>
+    {% endif %}
+
+    {# Leaderboard table #}
+    {% if players %}
+    <div class="chess-card p-0 overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-borderless chess-table mb-0 leaderboard-table">
+          <thead>
+            <tr>
+              <th class="text-center">#</th>
+              <th>Player</th>
+              <th class="text-center">W</th>
+              <th class="text-center">L</th>
+              <th class="text-center">Pts</th>
+              <th class="text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in players %}
+            <tr class="{% if p.is_eliminated %}eliminated-row{% endif %}">
+              <td class="text-center fw-bold">
+                {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+              </td>
+              <td>
+                <div class="{% if p.is_eliminated %}text-decoration-line-through{% endif %}">
+                  <strong>{{ p.full_name }}</strong>
+                </div>
+                <span class="chess-mono small text-muted">@{{ p.chess_username }}</span>
+              </td>
+              <td class="text-center text-success fw-bold">{{ p.wins }}</td>
+              <td class="text-center text-danger">{{ p.losses }}</td>
+              <td class="text-center chess-gold fw-bold">{{ p.points }}</td>
+              <td class="text-center">
+                {% if not p.is_eliminated %}
+                  <span class="badge" style="background:rgba(76,175,125,0.2);color:var(--chess-success)">✅ Active</span>
+                {% else %}
+                  <span class="badge" style="background:rgba(224,92,92,0.2);color:var(--chess-danger)">❌ Eliminated</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="text-center text-muted small mt-3"><i class="bi bi-arrow-clockwise"></i> Auto-refreshes every 30 seconds</p>
+    {% else %}
+    <div class="chess-card text-center py-5">
+      <i class="bi bi-bar-chart-fill fs-1 chess-gold"></i>
+      <p class="mt-3 text-muted">No approved players yet. Check back after registration.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

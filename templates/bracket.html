@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Live Bracket — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container-fluid px-4">
+
+    {# Page Header #}
+    <div class="text-center mb-4">
+      <h1 class="chess-section-title">
+        <i class="bi bi-diagram-3 chess-gold"></i> Live Bracket
+      </h1>
+      <p class="text-muted">
+        The live tournament bracket is embedded below from Challonge.
+        Results update in real time as matches are completed.
+      </p>
+    </div>
+
+    {# ============================================================
+       CHALLONGE IFRAME EMBED
+       The src URL is pulled from config.py (CHALLONGE_EMBED_URL).
+       Replace that URL in config.py to point to your actual bracket.
+       ============================================================ #}
+    <div class="chess-bracket-container">
+      {% if challonge_url and challonge_url != "https://challonge.com/tournaments/YOUR_TOURNAMENT_ID/module" %}
+        {# Real bracket URL configured — embed it #}
+        <iframe
+          src="{{ challonge_url }}"
+          width="100%"
+          height="700"
+          frameborder="0"
+          scrolling="auto"
+          allowtransparency="true"
+          title="Tournament Bracket"
+          class="chess-bracket-iframe"
+        ></iframe>
+      {% else %}
+        {# Placeholder shown until admin configures the Challonge URL in config.py #}
+        <div class="chess-bracket-placeholder">
+          <div class="text-center py-5">
+            <div style="font-size: 4rem;">♛</div>
+            <h4 class="chess-gold mt-3">Bracket Not Yet Configured</h4>
+            <p class="text-muted mt-2">
+              The admin needs to set the Challonge bracket URL in <code>config.py</code>.
+            </p>
+            <p class="text-muted">
+              Update the <code>CHALLONGE_EMBED_URL</code> variable in
+              <code>config.py</code> with your Challonge tournament's embed URL.
+            </p>
+            <hr class="my-4 w-50 mx-auto" />
+            <p class="text-muted small">
+              <strong>How to get the Challonge embed URL:</strong><br/>
+              Challonge Dashboard → Your Tournament → Share → Embed → Copy the <code>src</code> URL
+            </p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    {# Quick tips below the bracket #}
+    <div class="row justify-content-center mt-4">
+      <div class="col-lg-8">
+        <div class="chess-card">
+          <div class="row text-center g-3">
+            <div class="col-md-4">
+              <i class="bi bi-arrow-clockwise chess-gold fs-4"></i>
+              <p class="small mt-1 mb-0">
+                Bracket updates automatically. Refresh the page to see latest results.
+              </p>
+            </div>
+            <div class="col-md-4">
+              <i class="bi bi-person-circle chess-gold fs-4"></i>
+              <p class="small mt-1 mb-0">
+                Log in to your
+                <a href="{{ url_for('student_login') }}" class="chess-link">Player Dashboard</a>
+                to see your next opponent.
+              </p>
+            </div>
+            <div class="col-md-4">
+              <i class="bi bi-whatsapp chess-gold fs-4"></i>
+              <p class="small mt-1 mb-0">
+                Match announcements are also posted in the WhatsApp group.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

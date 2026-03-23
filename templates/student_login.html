@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Player Login — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-5 col-md-7">
+
+        {# Page Header #}
+        <div class="text-center mb-4">
+          <div class="chess-form-icon">♙</div>
+          <h1 class="chess-section-title">Player Login</h1>
+          <p class="text-muted">
+            Enter your Roll Number and Player Username to access your dashboard.
+          </p>
+        </div>
+
+        {# ============================================================
+           STUDENT LOGIN FORM
+           No password needed — Roll Number + Player Username acts as
+           a simple two-factor identity check for this tournament portal.
+           ============================================================ #}
+        <div class="chess-card">
+          <form method="POST" action="{{ url_for('student_login') }}">
+
+            {# --- Roll Number --- #}
+            <div class="mb-3">
+              <label for="roll_number" class="form-label fw-semibold">
+                <i class="bi bi-card-text"></i> Roll Number / Student ID
+              </label>
+              <input
+                type="text"
+                class="form-control chess-input"
+                id="roll_number"
+                name="roll_number"
+                placeholder="e.g. CS2021042"
+                required
+              />
+            </div>
+
+            {# --- Player Username --- #}
+            <div class="mb-4">
+              <label for="chess_username" class="form-label fw-semibold">
+                <i class="bi bi-controller"></i> Player Username
+              </label>
+              <input
+                type="text"
+                class="form-control chess-input"
+                id="chess_username"
+                name="chess_username"
+                placeholder="Your player username"
+                required
+              />
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn chess-btn-primary btn-lg">
+                <i class="bi bi-box-arrow-in-right"></i> &nbsp; View My Dashboard
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        {# Links #}
+        <div class="text-center mt-3">
+          <p class="text-muted small">
+            Not registered yet?
+            <a href="{{ url_for('register') }}" class="chess-link">Register here →</a>
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

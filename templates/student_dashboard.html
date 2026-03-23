@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+
+    {# ============================================================
+       HEADER — Player identity and status
+       ============================================================ #}
+    <div class="row mb-4 align-items-center">
+      <div class="col">
+        <h1 class="chess-section-title mb-1">
+          Welcome, {{ player.full_name }}
+        </h1>
+        <p class="text-muted mb-0">
+          <i class="bi bi-card-text"></i> {{ player.roll_number }}
+          &nbsp;&nbsp;
+          <i class="bi bi-controller"></i>
+          <span class="chess-mono">{{ player.chess_username }}</span>
+          &nbsp;&nbsp;
+          <i class="bi bi-whatsapp"></i> {{ player.whatsapp }}
+        </p>
+      </div>
+      <div class="col-auto">
+        <a href="{{ url_for('student_logout') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-box-arrow-right"></i> Log Out
+        </a>
+      </div>
+    </div>
+
+    {# ============================================================
+       STATUS BADGES
+       ============================================================ #}
+    <div class="row g-3 mb-4">
+
+      {# Registration Status #}
+      <div class="col-md-4">
+        <div class="chess-status-card">
+          <div class="chess-status-label">Registration</div>
+          {% if player.is_approved %}
+            <div class="chess-status-value text-success">
+              <i class="bi bi-check-circle-fill"></i> Approved
+            </div>
+          {% else %}
+            <div class="chess-status-value text-warning">
+              <i class="bi bi-hourglass-split"></i> Pending Approval
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Tournament Status #}
+      <div class="col-md-4">
+        <div class="chess-status-card">
+          <div class="chess-status-label">Tournament Status</div>
+          {% if not player.is_approved %}
+            <div class="chess-status-value text-muted">
+              <i class="bi bi-dash-circle"></i> Awaiting Approval
+            </div>
+          {% elif player.is_eliminated %}
+            <div class="chess-status-value text-danger">
+              <i class="bi bi-x-circle-fill"></i> Eliminated
+            </div>
+          {% else %}
+            <div class="chess-status-value text-success">
+              <i class="bi bi-shield-check"></i> Still In It! ♟
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Matches Played #}
+      <div class="col-md-4">
+        <div class="chess-status-card">
+          <div class="chess-status-label">Matches Played</div>
+          <div class="chess-status-value chess-gold">
+            {{ match_history | length }}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {# ============================================================
+       CURRENT / NEXT MATCH — The main focus for returning players
+       ============================================================ #}
+    <h2 class="chess-section-title mb-3">
+      <i class="bi bi-crosshairs chess-gold"></i> Your Next Match
+    </h2>
+
+    {% if not player.is_approved %}
+      {# Awaiting approval #}
+      <div class="chess-card mb-4">
+        <div class="text-center py-3">
+          <div style="font-size:2.5rem;">⏳</div>
+          <h5 class="mt-3">Pending Admin Approval</h5>
+          <p class="text-muted mb-0">
+            Your registration is under review. Once an admin approves you,
+            you'll be included in the bracket. Check back soon!
+          </p>
+        </div>
+      </div>
+
+    {% elif player.is_eliminated %}
+      {# Eliminated #}
+      <div class="chess-card mb-4 chess-eliminated-card">
+        <div class="text-center py-3">
+          <div style="font-size:2.5rem;">♟</div>
+          <h5 class="mt-3 text-danger">You've Been Eliminated</h5>
+          <p class="text-muted mb-0">
+            Better luck next time! Keep practising and come back stronger next semester.
+          </p>
+          <a href="{{ url_for('bracket') }}" class="btn chess-btn-outline mt-3">
+            <i class="bi bi-diagram-3"></i> Watch the Bracket
+          </a>
+        </div>
+      </div>
+
+    {% elif current_match %}
+      {# Active match found #}
+      <div class="chess-match-card mb-4">
+
+        <div class="chess-match-round-badge">
+          Round {{ current_match.round_number }}
+          {% if current_match.round_label %}
+            — {{ current_match.round_label }}
+          {% endif %}
+        </div>
+
+        <div class="row align-items-center mt-3">
+
+          {# You (left side) #}
+          <div class="col text-center">
+            <div class="chess-player-avatar you">♟</div>
+            <div class="chess-player-name">{{ player.full_name }}</div>
+            <div class="chess-player-username chess-mono">{{ player.chess_username }}</div>
+            <span class="badge bg-success mt-1">You</span>
+          </div>
+
+          {# VS #}
+          <div class="col-auto text-center">
+            <div class="chess-vs-text">VS</div>
+          </div>
+
+          {# Opponent (right side) #}
+          <div class="col text-center">
+            {% if current_match.is_bye %}
+              <div class="chess-player-avatar bye">🎖</div>
+              <div class="chess-player-name">BYE</div>
+              <div class="chess-player-username text-muted">Auto-Advance</div>
+              <span class="badge bg-secondary mt-1">Bye Round</span>
+            {% elif opponent %}
+              <div class="chess-player-avatar opp">♙</div>
+              <div class="chess-player-name">{{ opponent.full_name }}</div>
+              <div class="chess-player-username chess-mono">{{ opponent.chess_username }}</div>
+              <span class="badge bg-warning text-dark mt-1">Opponent</span>
+            {% else %}
+              <div class="chess-player-avatar pending">?</div>
+              <div class="chess-player-name text-muted">TBD</div>
+              <div class="chess-player-username text-muted">Opponent TBD</div>
+            {% endif %}
+          </div>
+
+        </div>
+
+        {# Match Status #}
+        <div class="text-center mt-4">
+          {% if current_match.status == "pending" %}
+            <span class="chess-match-status pending">
+              <i class="bi bi-clock"></i> Waiting to Start
+            </span>
+          {% elif current_match.status == "in_progress" %}
+            <span class="chess-match-status live">
+              <i class="bi bi-record-circle-fill"></i> LIVE NOW
+            </span>
+          {% elif current_match.status == "bye" %}
+            <span class="chess-match-status bye">
+              <i class="bi bi-arrow-right-circle"></i> BYE — You advance automatically!
+            </span>
+          {% endif %}
+        </div>
+
+        {# Action box for in-progress matches #}
+        {% if current_match.status in ("pending", "in_progress") and opponent %}
+          <div class="chess-action-box mt-4">
+            <p class="mb-2 fw-semibold">
+              <i class="bi bi-controller chess-gold"></i>
+              Your match is ready to play!
+            </p>
+            <a href="{{ url_for('play_match', match_id=current_match.id) }}"
+               class="btn chess-btn-primary w-100 mb-2">
+              ♟ Enter Match — Play Now
+            </a>
+            <p class="small text-danger mt-2 mb-0">
+              ⚠️ Once you enter, you must finish. You cannot abandon this match.
+            </p>
+          </div>
+        {% endif %}
+
+        {% if current_match.notes %}
+          <div class="alert alert-secondary mt-3 mb-0 small">
+            <i class="bi bi-info-circle"></i> {{ current_match.notes }}
+          </div>
+        {% endif %}
+
+      </div>
+
+    {% else %}
+      {# Approved, not eliminated, but no match generated yet #}
+      <div class="chess-card mb-4">
+        <div class="text-center py-3">
+          <div style="font-size:2.5rem;">♛</div>
+          <h5 class="mt-3">Waiting for Next Round Pairings</h5>
+          <p class="text-muted mb-0">
+            You're in the tournament! Pairings for the next round haven't been
+            generated yet. Check back soon or watch the WhatsApp group for updates.
+          </p>
+        </div>
+      </div>
+    {% endif %}
+
+    {# ============================================================
+       MATCH HISTORY
+       ============================================================ #}
+    {% if match_history %}
+    <h2 class="chess-section-title mb-3 mt-2">
+      <i class="bi bi-clock-history chess-gold"></i> Match History
+    </h2>
+
+    <div class="chess-card">
+      <div class="table-responsive">
+        <table class="table table-borderless chess-table mb-0">
+          <thead>
+            <tr>
+              <th>Round</th>
+              <th>Opponent</th>
+              <th>Status</th>
+              <th>Result</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in match_history %}
+              {# Determine who the opponent is from this player's perspective #}
+              {% if m.player1_id == player.id %}
+                {% set opp_in_history = m.player2 %}
+              {% else %}
+                {% set opp_in_history = m.player1 %}
+              {% endif %}
+
+              <tr>
+                <td>
+                  <span class="badge bg-secondary">Round {{ m.round_number }}</span>
+                  {% if m.round_label %}
+                    <br/><small class="text-muted">{{ m.round_label }}</small>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if m.is_bye %}
+                    <em class="text-muted">BYE</em>
+                  {% elif opp_in_history %}
+                    {{ opp_in_history.full_name }}<br/>
+                    <span class="chess-mono small">{{ opp_in_history.chess_username }}</span>
+                  {% else %}
+                    <em class="text-muted">TBD</em>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if m.status == "completed" %}
+                    <span class="badge bg-success">Completed</span>
+                  {% elif m.status == "in_progress" %}
+                    <span class="badge bg-danger">Live</span>
+                  {% elif m.status == "bye" %}
+                    <span class="badge bg-info text-dark">Bye</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if m.status in ("completed", "bye") %}
+                    {% if m.winner_id == player.id %}
+                      <span class="text-success fw-bold">
+                        <i class="bi bi-trophy-fill"></i> Won
+                      </span>
+                    {% else %}
+                      <span class="text-danger fw-bold">
+                        <i class="bi bi-x-circle-fill"></i> Lost
+                      </span>
+                    {% endif %}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td><small class="text-muted">{{ m.notes or '—' }}</small></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{{ tournament_name }} — Home{% endblock %}
+
+{% block content %}
+
+{# ============================================================
+   HERO SECTION
+   ============================================================ #}
+<section class="chess-hero py-5">
+  <div class="container py-4">
+    <div class="row align-items-center">
+
+      <div class="col-lg-8">
+        <p class="chess-subtitle mb-2">
+          <i class="bi bi-trophy-fill chess-gold"></i>
+          {{ college_name }} Presents
+        </p>
+        <h1 class="chess-display-title mb-3">{{ tournament_name }}</h1>
+        <p class="lead chess-lead mb-4">
+          Compete online. Claim the crown. Play right here on our site with a custom bracket —
+          the ultimate <strong>{{ tournament_format }}</strong> showdown.
+        </p>
+
+        <div class="d-flex flex-wrap gap-3">
+          {% if registration_open %}
+            <a href="{{ url_for('register') }}" class="btn chess-btn-primary btn-lg px-4">
+              <i class="bi bi-pencil-square"></i> Register Now
+            </a>
+          {% else %}
+            <span class="btn btn-secondary btn-lg px-4 disabled">
+              <i class="bi bi-x-circle"></i> Registration Closed
+            </span>
+          {% endif %}
+          <a href="{{ url_for('fixtures') }}" class="btn chess-btn-outline btn-lg px-4">
+            <i class="bi bi-grid-3x3-gap"></i> Fixtures
+          </a>
+          <a href="{{ url_for('leaderboard') }}" class="btn chess-btn-outline btn-lg px-4">
+            <i class="bi bi-trophy"></i> Leaderboard
+          </a>
+          <a href="{{ url_for('student_login') }}" class="btn btn-outline-light btn-lg px-4">
+            <i class="bi bi-person"></i> Player Login
+          </a>
+        </div>
+      </div>
+
+      {# Large chess piece decoration #}
+      <div class="col-lg-4 text-center d-none d-lg-block">
+        <div class="hero-piece-display">♚</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{# ============================================================
+   STATS BAR
+   ============================================================ #}
+<section class="chess-stats-bar py-3">
+  <div class="container">
+    <div class="row text-center g-0">
+      <div class="col-4">
+        <div class="stat-item">
+          <span class="stat-number">{{ total_registered }}</span>
+          <span class="stat-label">Registered</span>
+        </div>
+      </div>
+      <div class="col-4 stat-item-divider">
+        <div class="stat-item">
+          <span class="stat-number chess-gold">{{ total_approved }}</span>
+          <span class="stat-label">Approved</span>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="stat-item">
+          <span class="stat-number">{{ active_players }}</span>
+          <span class="stat-label">Still Active</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ============================================================
+   ONE-HOUR RULE — MUST BE PROMINENT
+   ============================================================ #}
+<section class="py-4">
+  <div class="container">
+    <div class="chess-alert-box">
+      <div class="d-flex align-items-start gap-3">
+        <span class="chess-alert-icon">⚠️</span>
+        <div>
+          <h5 class="chess-alert-title mb-1">The One-Hour Join Rule</h5>
+          <p class="mb-0">{{ one_hour_rule | safe }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ============================================================
+   TOURNAMENT DETAILS CARDS
+   ============================================================ #}
+<section class="py-5">
+  <div class="container">
+    <h2 class="chess-section-title text-center mb-5">
+      Tournament Rules & Format
+    </h2>
+
+    <div class="row g-4">
+
+      {# Format Card #}
+      <div class="col-md-4">
+        <div class="chess-card h-100">
+          <div class="chess-card-icon">♔</div>
+          <h5 class="chess-card-title">Format</h5>
+          <p>
+            <strong>{{ tournament_format }}</strong>. Lose once and you're out —
+            every game counts. All games are played directly
+            on <strong>this website</strong>.
+          </p>
+        </div>
+      </div>
+
+      {# Time Control Card #}
+      <div class="col-md-4">
+        <div class="chess-card h-100">
+          <div class="chess-card-icon">⏱</div>
+          <h5 class="chess-card-title">Time Control</h5>
+          <p>
+            All games are played at <strong>{{ time_control }}</strong>.
+            Both players must agree on the game settings before starting.
+            Verify the time control before accepting any challenge.
+          </p>
+        </div>
+      </div>
+
+      {# Fair Play Card #}
+      <div class="col-md-4">
+        <div class="chess-card h-100">
+          <div class="chess-card-icon">♟</div>
+          <h5 class="chess-card-title">Fair Play</h5>
+          <p>
+            Any use of chess engines or outside assistance is a
+            <strong>permanent ban</strong> from all future college tournaments.
+            Built-in cheat detection applies. Play with honour.
+          </p>
+        </div>
+      </div>
+
+      {# How to Play Card #}
+      <div class="col-md-6">
+        <div class="chess-card h-100">
+          <div class="chess-card-icon">📋</div>
+          <h5 class="chess-card-title">How to Play Your Match</h5>
+          <ol class="mb-0 ps-3">
+            <li>Wait for bracket pairings to be announced on this site &amp; WhatsApp.</li>
+            <li>Find your opponent in <strong>My Dashboard</strong> and click <strong>Enter Match</strong>.</li>
+            <li>Play the <strong>{{ time_control }}</strong> game directly on this website.</li>
+            <li>Both players must be online — coordinate via the WhatsApp group.</li>
+            <li>Results are recorded automatically when the game finishes.</li>
+          </ol>
+        </div>
+      </div>
+
+      {# Registration Process Card #}
+      <div class="col-md-6">
+        <div class="chess-card h-100">
+          <div class="chess-card-icon">✅</div>
+          <h5 class="chess-card-title">Registration Process</h5>
+          <ol class="mb-0 ps-3">
+            <li>Fill in the registration form with your real name, roll number, player username, and WhatsApp.</li>
+            <li>Wait for admin approval (you'll see it on your dashboard).</li>
+            <li>Once approved, you're in the bracket — check back for your first-round pairing.</li>
+            <li>Log in with your Roll Number + Player Username anytime to see your next match.</li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{# ============================================================
+   CALL TO ACTION BANNER
+   ============================================================ #}
+{% if registration_open %}
+<section class="chess-cta-section py-5 mb-4">
+  <div class="container text-center">
+    <h2 class="chess-display-title mb-3">Ready to compete?</h2>
+    <p class="lead mb-4">
+      Register now, get approved, and wait for the bracket to drop.
+      May the best player win. ♛
+    </p>
+    <a href="{{ url_for('register') }}" class="btn chess-btn-primary btn-lg px-5">
+      <i class="bi bi-pencil-square"></i> &nbsp; Register for the Tournament
+    </a>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}

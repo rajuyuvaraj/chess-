@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Register — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 col-md-8">
+
+        {# Page Header #}
+        <div class="text-center mb-4">
+          <div class="chess-form-icon">♟</div>
+          <h1 class="chess-section-title">Tournament Registration</h1>
+          <p class="text-muted">
+            Fill in your details below. An admin will review and approve
+            your registration before the bracket is generated.
+          </p>
+        </div>
+
+        {# Registration is closed message #}
+        {% if not registration_open %}
+          <div class="alert alert-danger text-center">
+            <i class="bi bi-x-octagon-fill"></i>
+            <strong>Registration is closed.</strong> The tournament has already started.
+          </div>
+        {% else %}
+
+        {# ============================================================
+           REGISTRATION FORM
+           action="" submits to the same URL (/register) via POST
+           ============================================================ #}
+        <div class="chess-card">
+          <form method="POST" action="{{ url_for('register') }}" novalidate>
+
+            {# --- Full Name --- #}
+            <div class="mb-3">
+              <label for="full_name" class="form-label fw-semibold">
+                <i class="bi bi-person-fill"></i> Full Name
+              </label>
+              <input
+                type="text"
+                class="form-control chess-input"
+                id="full_name"
+                name="full_name"
+                placeholder="e.g. Arjun Sharma"
+                value="{{ form_data.get('full_name', '') }}"
+                required
+                maxlength="100"
+              />
+              <div class="form-text">Enter your full name as on your college ID.</div>
+            </div>
+
+            {# --- Roll Number / Student ID --- #}
+            <div class="mb-3">
+              <label for="roll_number" class="form-label fw-semibold">
+                <i class="bi bi-card-text"></i> Roll Number / Student ID
+              </label>
+              <input
+                type="text"
+                class="form-control chess-input"
+                id="roll_number"
+                name="roll_number"
+                placeholder="e.g. CS2021042"
+                value="{{ form_data.get('roll_number', '') }}"
+                required
+                maxlength="50"
+              />
+              <div class="form-text">
+                Your unique college roll number. This will also be used to log in.
+              </div>
+            </div>
+
+            {# --- Player Username --- #}
+            <div class="mb-3">
+              <label for="chess_username" class="form-label fw-semibold">
+                <i class="bi bi-controller"></i> Player Username
+              </label>
+              <input
+                type="text"
+                class="form-control chess-input"
+                id="chess_username"
+                name="chess_username"
+                placeholder="e.g. ChessMaster42"
+                value="{{ form_data.get('chess_username', '') }}"
+                required
+                maxlength="50"
+              />
+              <div class="form-text">
+                Choose a unique username for the tournament. This will be used to log in and displayed during matches.
+              </div>
+            </div>
+
+            {# --- WhatsApp Number --- #}
+            <div class="mb-4">
+              <label for="whatsapp" class="form-label fw-semibold">
+                <i class="bi bi-whatsapp"></i> WhatsApp Number
+              </label>
+              <input
+                type="tel"
+                class="form-control chess-input"
+                id="whatsapp"
+                name="whatsapp"
+                placeholder="e.g. +91 98765 43210"
+                value="{{ form_data.get('whatsapp', '') }}"
+                required
+                maxlength="20"
+              />
+              <div class="form-text">
+                You'll be added to the tournament WhatsApp group for match announcements.
+              </div>
+            </div>
+
+            {# One-hour rule reminder right on the form #}
+            <div class="chess-mini-alert mb-4">
+              <i class="bi bi-exclamation-triangle-fill chess-gold"></i>
+              <small>
+                <strong>Reminder:</strong> Once your match is announced, you must join
+                and play within <strong>60 minutes</strong> or you will forfeit the round.
+              </small>
+            </div>
+
+            {# Submit button #}
+            <div class="d-grid">
+              <button type="submit" class="btn chess-btn-primary btn-lg">
+                <i class="bi bi-check2-circle"></i> &nbsp; Submit Registration
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        {# Already registered? Log in link #}
+        <p class="text-center mt-3 text-muted">
+          Already registered?
+          <a href="{{ url_for('student_login') }}" class="chess-link">
+            Log in to check your status →
+          </a>
+        </p>
+
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

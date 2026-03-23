@@ -1,0 +1,186 @@
+{# =============================================================================
+   base.html — Master Layout Template
+   =============================================================================
+   Every other template extends this file using:
+       {% extends "base.html" %}
+       {% block content %} ... {% endblock %}
+
+   Jinja2 blocks available for child templates:
+     - {% block title %}   — page title in the <head>
+     - {% block content %} — main page body
+     - {% block extra_css %}   — extra <style> or <link> tags
+     - {% block extra_js %}    — extra <script> tags at bottom
+   ============================================================================= #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ tournament_name }}{% endblock %}</title>
+
+  {# Bootstrap 5 CSS — for responsive grid, forms, buttons, badges #}
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+  {# Bootstrap Icons — for chess/UI icons throughout the site #}
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  {# Google Fonts: Playfair Display (headings) + IBM Plex Mono (chess usernames) #}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+
+  {# Our custom chess-themed CSS #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  {# ============================================================
+     NAVIGATION BAR
+     ============================================================ #}
+  <nav class="navbar navbar-expand-lg navbar-dark chess-navbar sticky-top">
+    <div class="container">
+
+      {# Brand / Logo #}
+      <a class="navbar-brand chess-brand" href="{{ url_for('index') }}">
+        ♟ {{ tournament_name }}
+      </a>
+
+      {# Mobile toggle button #}
+      <button class="navbar-toggler" type="button"
+              data-bs-toggle="collapse" data-bs-target="#navMenu"
+              aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      {# Nav links #}
+      <div class="collapse navbar-collapse" id="navMenu">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('index') }}">
+              <i class="bi bi-house-door"></i> Home
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('register') }}">
+              <i class="bi bi-pencil-square"></i> Register
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('bracket') }}">
+              <i class="bi bi-diagram-3"></i> Bracket
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('fixtures') }}">
+              <i class="bi bi-grid-3x3-gap"></i> Fixtures
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('leaderboard') }}">
+              <i class="bi bi-trophy"></i> Leaderboard
+            </a>
+          </li>
+
+          {# Student login / dashboard #}
+          {% if session.get('student_roll') %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('student_dashboard') }}">
+                <i class="bi bi-person-circle"></i> My Dashboard
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-warning" href="{{ url_for('student_logout') }}">
+                <i class="bi bi-box-arrow-right"></i> Log Out
+              </a>
+            </li>
+          {% else %}
+            <li class="nav-item">
+              <a class="nav-link chess-btn-outline btn btn-sm ms-2"
+                 href="{{ url_for('student_login') }}">
+                <i class="bi bi-person"></i> Student Login
+              </a>
+            </li>
+          {% endif %}
+
+          {# Admin panel link — always visible #}
+          {% if session.get('admin_logged_in') %}
+            <li class="nav-item">
+              <a class="nav-link btn btn-sm btn-warning ms-2 text-dark fw-bold"
+                 href="{{ url_for('admin_dashboard') }}">
+                <i class="bi bi-shield-lock"></i> Admin Panel
+              </a>
+            </li>
+          {% else %}
+            <li class="nav-item">
+              <a class="nav-link btn btn-sm btn-outline-warning ms-2"
+                 href="{{ url_for('admin_login') }}">
+                <i class="bi bi-shield-lock"></i> Admin Login
+              </a>
+            </li>
+          {% endif %}
+
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  {# ============================================================
+     FLASH MESSAGES
+     Flash messages are one-time notifications set in Python routes.
+     Categories: success | danger | warning | info
+     ============================================================ #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="container mt-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message | safe }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# ============================================================
+     MAIN CONTENT — child templates fill this in
+     ============================================================ #}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {# ============================================================
+     FOOTER
+     ============================================================ #}
+  <footer class="chess-footer mt-5 py-4">
+    <div class="container text-center">
+      <p class="mb-1">
+        <span class="chess-gold">♟ {{ tournament_name }}</span>
+        &nbsp;·&nbsp; {{ college_name }}
+      </p>
+      <p class="text-muted small mb-0">
+        Organised by {{ organizer_name }}
+        &nbsp;·&nbsp;
+        Time Control: {{ time_control }}
+        &nbsp;·&nbsp;
+        Format: {{ tournament_format }}
+      </p>
+    </div>
+  </footer>
+
+  {# Bootstrap 5 JS (required for navbar toggle, dismissible alerts, etc.) #}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

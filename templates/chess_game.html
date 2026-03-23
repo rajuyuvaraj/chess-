@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+{% block title %}Match — {{ player_white }} vs {{ player_black }}{% endblock %}
+{% block extra_css %}
+<style>
+:root{--chess-bg:#0d0f14;--chess-surface:#161922;--chess-surface-2:#1e2230;--chess-border:#2a2f3e;--chess-gold:#d4a843;--chess-gold-light:#e8c26a;--chess-text:#e8eaf0;--chess-muted:#7a82a0;--sq-light:#f0d9b5;--sq-dark:#b58863;--sq-selected:rgba(212,168,67,0.75);--sq-legal:rgba(212,168,67,0.35);--sq-capture:rgba(212,168,67,0.55);--sq-lastmove:rgba(255,255,100,0.25);--sq-check:rgba(220,50,50,0.7)}
+#chess-app{max-width:1100px;margin:2rem auto;padding:0 1rem}
+.chess-game-layout{display:flex;gap:1.5rem;align-items:flex-start}
+.board-wrapper{flex-shrink:0}.side-panel{flex:1;min-width:260px;background:var(--chess-surface);border:1px solid var(--chess-border);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-height:620px}
+.board-grid{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid var(--chess-border);border-radius:4px;overflow:hidden;width:min(75vw,560px);height:min(75vw,560px)}
+.square{display:flex;align-items:center;justify-content:center;font-size:min(7vw,52px);cursor:pointer;position:relative;user-select:none;transition:background .1s}
+.square.light{background:var(--sq-light)}.square.dark{background:var(--sq-dark)}
+.square.selected{background:var(--sq-selected)!important}.square.last-move{background:var(--sq-lastmove)!important}
+.square.check-highlight{animation:check-pulse .8s ease-in-out infinite}
+@keyframes check-pulse{0%,100%{background:rgba(220,50,50,.5)}50%{background:rgba(220,50,50,.85)}}
+.move-dot{width:26%;height:26%;background:rgba(0,0,0,.25);border-radius:50%;position:absolute;pointer-events:none}
+.capture-ring{width:92%;height:92%;border:4px solid rgba(0,0,0,.35);border-radius:50%;position:absolute;pointer-events:none;box-sizing:border-box}
+.coord-file,.coord-rank{position:absolute;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--chess-muted);pointer-events:none;opacity:.8}
+.coord-rank{top:2px;left:3px}.coord-file{bottom:2px;right:3px}
+.piece-white{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6)}.piece-black{color:#1a1a2e;text-shadow:0 1px 3px rgba(255,255,255,.25)}
+.player-bar{display:flex;align-items:center;gap:.5rem;padding:.6rem .75rem;border-radius:8px;background:var(--chess-surface-2)}
+.player-bar .name{font-family:'Playfair Display',serif;font-weight:700;font-size:1rem;color:var(--chess-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.player-bar .captured{font-size:.85rem;margin-left:auto;letter-spacing:1px;min-width:0;word-break:break-all}
+.player-bar.active-turn{border:2px solid var(--chess-gold);box-shadow:0 0 12px rgba(212,168,67,.25)}
+.status-bar{text-align:center;font-weight:700;font-size:1.05rem;padding:.5rem;border-radius:8px;color:var(--chess-gold);background:var(--chess-surface-2);font-family:'Inter',sans-serif}
+.status-bar.in-check{color:#ff5252}.status-bar.game-over{color:#4caf50}
+.move-history{flex:1;overflow-y:auto;font-family:'IBM Plex Mono',monospace;font-size:.82rem;background:var(--chess-surface-2);border-radius:8px;padding:.5rem;min-height:80px;max-height:260px}
+.move-history table{width:100%;color:var(--chess-text)}.move-history th{color:var(--chess-muted);font-weight:500;padding:2px 6px;border-bottom:1px solid var(--chess-border);font-size:.75rem}
+.move-history td{padding:2px 6px}.move-history tr.current-move{background:rgba(212,168,67,.15)}
+.chess-game-btn{padding:.55rem .9rem;border:1px solid var(--chess-border);border-radius:8px;background:var(--chess-surface-2);color:var(--chess-text);font-family:'Inter',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s;min-height:44px;text-align:center;width:100%}
+.chess-game-btn:hover{background:var(--chess-gold);color:#0d0f14;border-color:var(--chess-gold)}
+.chess-game-btn.danger{border-color:#c62828;color:#ef5350}.chess-game-btn.danger:hover{background:#e53935;border-color:#e53935;color:#fff}
+.chess-game-btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+/* Modals */
+.chess-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:9999}
+.chess-modal-overlay.active{display:flex}
+.chess-modal{background:var(--chess-surface);border:1px solid var(--chess-border);border-radius:16px;padding:2rem;text-align:center;min-width:320px;max-width:90vw;color:var(--chess-text);font-family:'Inter',sans-serif;animation:modal-pop .25s ease-out}
+@keyframes modal-pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.chess-modal h2{font-family:'Playfair Display',serif;color:var(--chess-gold);margin-bottom:.5rem}
+.chess-modal p{color:var(--chess-muted);margin-bottom:1rem}
+.promo-choices{display:flex;gap:1rem;justify-content:center;margin-top:1rem}
+.promo-choice{font-size:2.5rem;cursor:pointer;padding:.5rem .75rem;border-radius:8px;background:var(--chess-surface-2);border:2px solid var(--chess-border);transition:all .15s}
+.promo-choice:hover{border-color:var(--chess-gold);background:rgba(212,168,67,.15);transform:scale(1.1)}
+.result-btn{padding:.6rem 1.5rem;border-radius:8px;border:none;font-weight:700;font-size:.95rem;cursor:pointer;transition:all .15s;min-height:44px}
+.result-btn.primary{background:var(--chess-gold);color:#0d0f14}.result-btn.primary:hover{background:var(--chess-gold-light)}
+.result-btn.primary:disabled{opacity:.4;cursor:not-allowed}
+.result-btn.secondary{background:var(--chess-surface-2);color:var(--chess-text);border:1px solid var(--chess-border);margin-left:.5rem}
+.result-btn.secondary:hover{background:var(--chess-border)}
+/* Resign modal */
+.resign-input{width:100%;max-width:220px;padding:.5rem .75rem;border:2px solid var(--chess-border);border-radius:8px;background:var(--chess-surface-2);color:var(--chess-text);font-family:'IBM Plex Mono',monospace;font-size:1rem;text-align:center;margin:.75rem auto;display:block;letter-spacing:2px}
+.resign-input:focus{outline:none;border-color:#e53935}
+/* Resume banner */
+.resume-banner{position:fixed;top:0;left:0;right:0;z-index:999;padding:.75rem 1rem;background:linear-gradient(135deg,#1e2230,#2a2f3e);border-bottom:2px solid var(--chess-gold);color:var(--chess-gold-light);font-family:'Inter',sans-serif;font-weight:600;text-align:center;animation:slide-down .4s ease-out}
+@keyframes slide-down{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.resume-banner .close-banner{background:none;border:none;color:var(--chess-muted);cursor:pointer;font-size:1.2rem;position:absolute;right:1rem;top:50%;transform:translateY(-50%)}
+/* Responsive */
+@media(max-width:768px){.chess-game-layout{flex-direction:column;align-items:center}.board-grid{width:min(96vw,480px);height:min(96vw,480px)}.square{font-size:min(10vw,48px)}.side-panel{max-height:none;width:100%;max-width:min(96vw,480px)}}
+@media(max-width:400px){.coord-file,.coord-rank{display:none}.square{font-size:9.5vw}}
+</style>
+{% endblock %}
+{% block content %}
+<div id="game-config" data-white="{{ player_white }}" data-black="{{ player_black }}" data-match-id="{{ match_id }}" data-submit-url="{{ url_for('submit_match_result', match_id=match_id) }}" style="display:none"></div>
+
+<!-- Resume Banner (hidden by default) -->
+<div class="resume-banner" id="resume-banner" style="display:none">
+  <span id="resume-text">⚡ Match Resumed</span>
+  <button class="close-banner" onclick="document.getElementById('resume-banner').style.display='none'">✕</button>
+</div>
+
+<div id="chess-app">
+  <div class="chess-game-layout">
+    <div class="board-wrapper">
+      <div class="board-grid" id="board"></div>
+    </div>
+    <div class="side-panel">
+      <div class="player-bar" id="bar-top"><span class="name" id="name-top"></span><span class="captured" id="cap-top"></span></div>
+      <div class="status-bar" id="status-bar">White to Move</div>
+      <div class="move-history" id="move-log"><table><thead><tr><th>#</th><th>White</th><th>Black</th></tr></thead><tbody id="move-tbody"></tbody></table></div>
+      <div class="player-bar" id="bar-bottom"><span class="name" id="name-bottom"></span><span class="captured" id="cap-bottom"></span></div>
+      <div id="btn-area">
+        <button class="chess-game-btn danger" id="resign-btn" onclick="showResignModal()">⚑ Resign</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Promotion Modal -->
+<div class="chess-modal-overlay" id="promo-modal"><div class="chess-modal"><h2>♛ Promote Pawn</h2><p>Choose a piece:</p><div class="promo-choices" id="promo-choices"></div></div></div>
+
+<!-- Resign Confirmation Modal -->
+<div class="chess-modal-overlay" id="resign-modal"><div class="chess-modal">
+  <h2>⚠️ RESIGN THIS MATCH?</h2>
+  <p>This will count as a <strong>LOSS</strong> and you will be <strong>ELIMINATED</strong> from the tournament. This cannot be undone.</p>
+  <p style="color:var(--chess-text);font-weight:600;margin-bottom:.25rem">Type <span style="color:#e53935;font-family:'IBM Plex Mono',monospace">RESIGN</span> to confirm:</p>
+  <input class="resign-input" id="resign-input" type="text" autocomplete="off" spellcheck="false" placeholder="">
+  <div style="margin-top:1rem;display:flex;gap:.75rem;justify-content:center">
+    <button class="result-btn secondary" onclick="hideResignModal()">Cancel</button>
+    <button class="result-btn primary" id="confirm-resign-btn" disabled onclick="executeResign()" style="background:#e53935">Confirm Resign</button>
+  </div>
+</div></div>
+
+<!-- Result Modal -->
+<div class="chess-modal-overlay" id="result-modal"><div class="chess-modal">
+  <h2 id="result-title"></h2>
+  <p id="result-desc"></p>
+  <p id="result-submit-status" style="font-weight:600;color:var(--chess-gold)"></p>
+  <div id="result-btns" style="display:none"><button class="result-btn primary" onclick="startNewGame()">New Game</button></div>
+</div></div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+// ═══════════════════════════════════════════════════
+// SECTION 1: CONFIG & STATE
+// ═══════════════════════════════════════════════════
+const PIECES={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+const PIECE_VAL={P:1,N:3,B:3,R:5,Q:9,K:0};
+const cfg=document.getElementById('game-config').dataset;
+const playerWhiteName=cfg.white, playerBlackName=cfg.black, matchId=cfg.matchId, submitUrl=cfg.submitUrl;
+
+let board, currentTurn, enPassantTarget, castlingRights, moveHistory;
+let capturedPieces, selectedSquare, legalMovesCache, lastMove, pendingPromotion;
+let gameState;
+
+// ═══════════════════════════════════════════════════
+// SECTION 2: BOARD SETUP
+// ═══════════════════════════════════════════════════
+function initFreshGame(){
+  const back=['R','N','B','Q','K','B','N','R'];
+  board=Array.from({length:8},()=>Array(8).fill(null));
+  for(let c=0;c<8;c++){board[0][c]={type:back[c],color:'black'};board[1][c]={type:'P',color:'black'};board[6][c]={type:'P',color:'white'};board[7][c]={type:back[c],color:'white'};}
+  currentTurn='white'; enPassantTarget=null;
+  castlingRights={whiteKingside:true,whiteQueenside:true,blackKingside:true,blackQueenside:true};
+  moveHistory=[]; capturedPieces={white:[],black:[]};
+  selectedSquare=null; legalMovesCache=[]; lastMove=null; pendingPromotion=null;
+  gameState={status:'active',result:null,startedAt:new Date().toISOString(),lastMoveAt:null};
+}
+
+// ═══════════════════════════════════════════════════
+// SECTION 3: MOVE GENERATION
+// ═══════════════════════════════════════════════════
+function inB(r,c){return r>=0&&r<8&&c>=0&&c<8}
+function findKing(color){for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]&&board[r][c].type==='K'&&board[r][c].color===color)return[r,c];return null}
+
+// Returns true if square (row,col) is attacked by any piece of byColor
+function isSquareAttacked(row,col,byColor){
+  const dir=byColor==='white'?1:-1;
+  // Pawn
+  if(inB(row+dir,col-1)&&board[row+dir][col-1]&&board[row+dir][col-1].color===byColor&&board[row+dir][col-1].type==='P')return true;
+  if(inB(row+dir,col+1)&&board[row+dir][col+1]&&board[row+dir][col+1].color===byColor&&board[row+dir][col+1].type==='P')return true;
+  // Knight
+  for(const[dr,dc]of[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]){const nr=row+dr,nc=col+dc;if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color===byColor&&board[nr][nc].type==='N')return true;}
+  // Bishop/Queen diag
+  for(const[dr,dc]of[[-1,-1],[-1,1],[1,-1],[1,1]])for(let i=1;i<8;i++){const nr=row+dr*i,nc=col+dc*i;if(!inB(nr,nc))break;const p=board[nr][nc];if(p){if(p.color===byColor&&(p.type==='B'||p.type==='Q'))return true;break;}}
+  // Rook/Queen straight
+  for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]])for(let i=1;i<8;i++){const nr=row+dr*i,nc=col+dc*i;if(!inB(nr,nc))break;const p=board[nr][nc];if(p){if(p.color===byColor&&(p.type==='R'||p.type==='Q'))return true;break;}}
+  // King
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=row+dr,nc=col+dc;if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color===byColor&&board[nr][nc].type==='K')return true;}
+  return false;
+}
+
+function getPseudoMoves(row,col){
+  const piece=board[row][col];if(!piece)return[];
+  const moves=[],color=piece.color,enemy=color==='white'?'black':'white';
+  const add=(r,c,flags={})=>{if(inB(r,c))moves.push({fromR:row,fromC:col,toR:r,toC:c,...flags});};
+  switch(piece.type){
+    case'P':{
+      const dir=color==='white'?-1:1,startR=color==='white'?6:1,promoR=color==='white'?0:7;
+      if(inB(row+dir,col)&&!board[row+dir][col]){
+        if(row+dir===promoR)add(row+dir,col,{promotion:true});else add(row+dir,col);
+        if(row===startR&&!board[row+dir*2][col])add(row+dir*2,col,{doublePush:true});
+      }
+      for(const dc of[-1,1]){const nr=row+dir,nc=col+dc;if(!inB(nr,nc))continue;
+        if(board[nr][nc]&&board[nr][nc].color===enemy){if(nr===promoR)add(nr,nc,{promotion:true});else add(nr,nc);}
+        if(enPassantTarget&&enPassantTarget[0]===nr&&enPassantTarget[1]===nc)add(nr,nc,{enPassant:true});
+      }break;}
+    case'N':{for(const[dr,dc]of[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]){const nr=row+dr,nc=col+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color===enemy))add(nr,nc);}break;}
+    case'B':{for(const[dr,dc]of[[-1,-1],[-1,1],[1,-1],[1,1]])for(let i=1;i<8;i++){const nr=row+dr*i,nc=col+dc*i;if(!inB(nr,nc))break;if(board[nr][nc]){if(board[nr][nc].color===enemy)add(nr,nc);break;}add(nr,nc);}break;}
+    case'R':{for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]])for(let i=1;i<8;i++){const nr=row+dr*i,nc=col+dc*i;if(!inB(nr,nc))break;if(board[nr][nc]){if(board[nr][nc].color===enemy)add(nr,nc);break;}add(nr,nc);}break;}
+    case'Q':{for(const[dr,dc]of[[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]])for(let i=1;i<8;i++){const nr=row+dr*i,nc=col+dc*i;if(!inB(nr,nc))break;if(board[nr][nc]){if(board[nr][nc].color===enemy)add(nr,nc);break;}add(nr,nc);}break;}
+    case'K':{
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=row+dr,nc=col+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color===enemy))add(nr,nc);}
+      const br=color==='white'?7:0;
+      if(row===br&&col===4){
+        const ks=color==='white'?castlingRights.whiteKingside:castlingRights.blackKingside;
+        if(ks&&!board[br][5]&&!board[br][6]&&board[br][7]&&board[br][7].type==='R'&&board[br][7].color===color&&!isSquareAttacked(br,4,enemy)&&!isSquareAttacked(br,5,enemy)&&!isSquareAttacked(br,6,enemy))add(br,6,{castle:'kingside'});
+        const qs=color==='white'?castlingRights.whiteQueenside:castlingRights.blackQueenside;
+        if(qs&&!board[br][3]&&!board[br][2]&&!board[br][1]&&board[br][0]&&board[br][0].type==='R'&&board[br][0].color===color&&!isSquareAttacked(br,4,enemy)&&!isSquareAttacked(br,3,enemy)&&!isSquareAttacked(br,2,enemy))add(br,2,{castle:'queenside'});
+      }break;}
+  }return moves;
+}
+
+// Filter pseudo-legal moves — discard any that leave own king in check
+function getLegalMoves(row,col){
+  const piece=board[row][col];if(!piece)return[];
+  return getPseudoMoves(row,col).filter(m=>{
+    const saved=board[m.toR][m.toC], savedEP=m.enPassant?board[m.fromR][m.toC]:null;
+    board[m.toR][m.toC]=board[m.fromR][m.fromC]; board[m.fromR][m.fromC]=null;
+    if(m.enPassant)board[m.fromR][m.toC]=null;
+    const kp=findKing(piece.color);
+    const inCheck=kp?isSquareAttacked(kp[0],kp[1],piece.color==='white'?'black':'white'):true;
+    board[m.fromR][m.fromC]=board[m.toR][m.toC]; board[m.toR][m.toC]=saved;
+    if(m.enPassant)board[m.fromR][m.toC]=savedEP;
+    return!inCheck;
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// SECTION 4: CHECK / CHECKMATE / STALEMATE
+// ═══════════════════════════════════════════════════
+function isKingInCheck(color){const kp=findKing(color);return kp?isSquareAttacked(kp[0],kp[1],color==='white'?'black':'white'):false;}
+function playerHasAnyLegalMove(color){for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]&&board[r][c].color===color&&getLegalMoves(r,c).length>0)return true;return false;}
+
+// ═══════════════════════════════════════════════════
+// SECTION 5: MOVE EXECUTION
+// ═══════════════════════════════════════════════════
+const FILES='abcdefgh',RANKS='87654321';
+function toAlgebraic(move,piece,captured,isCheck,isMate){
+  if(move.castle==='kingside')return isMate?'O-O#':isCheck?'O-O+':'O-O';
+  if(move.castle==='queenside')return isMate?'O-O-O#':isCheck?'O-O-O+':'O-O-O';
+  let s='';if(piece.type!=='P')s+=piece.type;
+  if(captured||move.enPassant){if(piece.type==='P')s+=FILES[move.fromC];s+='x';}
+  s+=FILES[move.toC]+RANKS[move.toR];
+  if(move.promoteTo)s+='='+move.promoteTo;
+  if(isMate)s+='#';else if(isCheck)s+='+';
+  return s;
+}
+
+function executeMove(move){
+  const piece=board[move.fromR][move.fromC], captured=board[move.toR][move.toC];
+  if(captured){capturedPieces[captured.color].push(captured.type);}
+  if(move.enPassant){const ep=board[move.fromR][move.toC];if(ep)capturedPieces[ep.color].push('P');board[move.fromR][move.toC]=null;}
+  board[move.toR][move.toC]=piece;board[move.fromR][move.fromC]=null;
+  if(move.castle==='kingside'){board[move.toR][5]=board[move.toR][7];board[move.toR][7]=null;}
+  if(move.castle==='queenside'){board[move.toR][3]=board[move.toR][0];board[move.toR][0]=null;}
+  // Update castling rights
+  if(piece.type==='K'){if(piece.color==='white'){castlingRights.whiteKingside=false;castlingRights.whiteQueenside=false;}else{castlingRights.blackKingside=false;castlingRights.blackQueenside=false;}}
+  if(piece.type==='R'){if(move.fromR===7&&move.fromC===7)castlingRights.whiteKingside=false;if(move.fromR===7&&move.fromC===0)castlingRights.whiteQueenside=false;if(move.fromR===0&&move.fromC===7)castlingRights.blackKingside=false;if(move.fromR===0&&move.fromC===0)castlingRights.blackQueenside=false;}
+  if(move.toR===7&&move.toC===7)castlingRights.whiteKingside=false;if(move.toR===7&&move.toC===0)castlingRights.whiteQueenside=false;
+  if(move.toR===0&&move.toC===7)castlingRights.blackKingside=false;if(move.toR===0&&move.toC===0)castlingRights.blackQueenside=false;
+  enPassantTarget=move.doublePush?[(move.fromR+move.toR)/2,move.toC]:null;
+  lastMove={fromR:move.fromR,fromC:move.fromC,toR:move.toR,toC:move.toC};
+  const nextColor=currentTurn==='white'?'black':'white';
+  const check=isKingInCheck(nextColor), hasMove=playerHasAnyLegalMove(nextColor);
+  const notation=toAlgebraic(move,piece,captured||move.enPassant,check,check&&!hasMove);
+  if(currentTurn==='white')moveHistory.push({white:notation,black:''});else moveHistory[moveHistory.length-1].black=notation;
+  currentTurn=nextColor; selectedSquare=null; legalMovesCache=[];
+  gameState.lastMoveAt=new Date().toISOString();
+  // Check game end
+  if(check&&!hasMove){gameState.status='finished';gameState.result={winner:currentTurn==='white'?'black':'white',method:'checkmate'};}
+  else if(!check&&!hasMove){gameState.status='finished';gameState.result={winner:'draw',method:'stalemate'};}
+  saveGameState();
+  renderAll();
+  if(gameState.status==='finished')autoSubmitAndShowResult();
+}
+
+// ═══════════════════════════════════════════════════
+// SECTION 6: PERSISTENCE — localStorage save/load
+// ═══════════════════════════════════════════════════
+function saveGameState(){
+  const snapshot={board,currentTurn,moveHistory,capturedPieces,castlingRights,enPassantTarget,lastMove,gameState};
+  try{localStorage.setItem('match_'+matchId,JSON.stringify(snapshot));}catch(e){}
+  // Also sync to server for live spectating (fire-and-forget)
+  const lastN=moveHistory.length?moveHistory[moveHistory.length-1]:null;
+  const lastNotation=lastN?(lastN.black||lastN.white):'';
+  fetch('/match/'+matchId+'/move',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({board_state:JSON.stringify(board),move_history:JSON.stringify(moveHistory),
+      last_move:lastNotation,current_turn:currentTurn,move_count:moveHistory.length})
+  }).catch(()=>{});
+}
+function loadGameState(){
+  try{
+    const raw=localStorage.getItem('match_'+matchId);
+    if(!raw)return false;
+    const s=JSON.parse(raw);
+    board=s.board;currentTurn=s.currentTurn;moveHistory=s.moveHistory;capturedPieces=s.capturedPieces;
+    castlingRights=s.castlingRights;enPassantTarget=s.enPassantTarget;lastMove=s.lastMove;gameState=s.gameState;
+    selectedSquare=null;legalMovesCache=[];pendingPromotion=null;
+    return true;
+  }catch(e){return false;}
+}
+function showResumeBanner(){
+  const n=moveHistory.length;if(!n)return;
+  const lastN=moveHistory[n-1];const lastNotation=lastN.black||lastN.white;
+  const el=document.getElementById('resume-banner');
+  document.getElementById('resume-text').textContent='⚡ Match Resumed — Move '+n+'. Last: '+lastNotation;
+  el.style.display='block';
+  setTimeout(()=>{el.style.display='none';},4000);
+}
+
+// ═══════════════════════════════════════════════════
+// SECTION 7: RENDERING
+// ═══════════════════════════════════════════════════
+function renderAll(){
+  const boardEl=document.getElementById('board');boardEl.innerHTML='';
+  for(let ri=0;ri<8;ri++)for(let ci=0;ci<8;ci++){
+    const r=ri,c=ci;
+    const sq=document.createElement('div');
+    const isLight=(r+c)%2===0;
+    sq.className='square '+(isLight?'light':'dark');
+    if(lastMove&&((r===lastMove.fromR&&c===lastMove.fromC)||(r===lastMove.toR&&c===lastMove.toC)))sq.classList.add('last-move');
+    if(selectedSquare&&selectedSquare[0]===r&&selectedSquare[1]===c)sq.classList.add('selected');
+    if(board[r][c]&&board[r][c].type==='K'&&board[r][c].color===currentTurn&&isKingInCheck(currentTurn)&&gameState.status==='active')sq.classList.add('check-highlight');
+    const piece=board[r][c];
+    if(piece){const key=piece.color==='white'?piece.type:piece.type.toLowerCase();const sp=document.createElement('span');sp.textContent=PIECES[key];sp.className=piece.color==='white'?'piece-white':'piece-black';sq.appendChild(sp);}
+    const isLegal=legalMovesCache.some(m=>m.toR===r&&m.toC===c);
+    if(isLegal){const ind=document.createElement('div');ind.className=piece?'capture-ring':'move-dot';sq.appendChild(ind);}
+    // Coordinates
+    if(ci===0){const lbl=document.createElement('span');lbl.className='coord-rank';lbl.textContent=RANKS[ri];sq.appendChild(lbl);}
+    if(ri===7){const lbl=document.createElement('span');lbl.className='coord-file';lbl.textContent=FILES[ci];sq.appendChild(lbl);}
+    sq.addEventListener('click',()=>handleClick(r,c));
+    sq.addEventListener('touchend',e=>{e.preventDefault();handleClick(r,c);});
+    boardEl.appendChild(sq);
+  }
+  renderPanel();
+}
+function renderPanel(){
+  document.getElementById('name-top').textContent='♚ '+playerBlackName;
+  document.getElementById('name-bottom').textContent='♔ '+playerWhiteName;
+  const sortC=a=>[...a].sort((a,b)=>PIECE_VAL[b]-PIECE_VAL[a]);
+  document.getElementById('cap-top').textContent=sortC(capturedPieces.white).map(t=>PIECES[t]).join('');
+  document.getElementById('cap-bottom').textContent=sortC(capturedPieces.black).map(t=>PIECES[t.toLowerCase()]).join('');
+  document.getElementById('bar-top').classList.toggle('active-turn',currentTurn==='black'&&gameState.status==='active');
+  document.getElementById('bar-bottom').classList.toggle('active-turn',currentTurn==='white'&&gameState.status==='active');
+  const sb=document.getElementById('status-bar');sb.classList.remove('in-check','game-over');
+  if(gameState.status==='finished'){sb.classList.add('game-over');const r=gameState.result;
+    if(r.method==='checkmate')sb.textContent='♛ Checkmate — '+(r.winner==='white'?playerWhiteName:playerBlackName)+' Wins!';
+    else if(r.method==='stalemate')sb.textContent='½ Stalemate — Draw!';
+    else if(r.method==='resignation')sb.textContent='⚑ '+(r.winner==='white'?playerBlackName:playerWhiteName)+' Resigned';
+  }else if(isKingInCheck(currentTurn)){sb.classList.add('in-check');sb.textContent='⚠ '+(currentTurn==='white'?'White':'Black')+' is in Check!';}
+  else sb.textContent=(currentTurn==='white'?'White':'Black')+' to Move';
+  const tbody=document.getElementById('move-tbody');tbody.innerHTML='';
+  moveHistory.forEach((m,i)=>{const tr=document.createElement('tr');if(i===moveHistory.length-1)tr.className='current-move';tr.innerHTML='<td>'+(i+1)+'</td><td>'+m.white+'</td><td>'+(m.black||'')+'</td>';tbody.appendChild(tr);});
+  document.getElementById('move-log').scrollTop=9999;
+  // Resign button: only visible during active game
+  document.getElementById('resign-btn').style.display=gameState.status==='active'?'block':'none';
+}
+
+// ═══════════════════════════════════════════════════
+// SECTION 8: INPUT HANDLING
+// ═══════════════════════════════════════════════════
+function handleClick(r,c){
+  if(gameState.status!=='active')return;
+  const move=legalMovesCache.find(m=>m.toR===r&&m.toC===c);
+  if(move){
+    if(move.promotion){pendingPromotion=move;showPromoModal(currentTurn);return;}
+    executeMove(move);return;
+  }
+  const piece=board[r][c];
+  if(piece&&piece.color===currentTurn){selectedSquare=[r,c];legalMovesCache=getLegalMoves(r,c);renderAll();}
+  else{selectedSquare=null;legalMovesCache=[];renderAll();}
+}
+function showPromoModal(color){
+  document.getElementById('promo-modal').classList.add('active');
+  const cont=document.getElementById('promo-choices');cont.innerHTML='';
+  ['Q','R','B','N'].forEach(t=>{
+    const btn=document.createElement('div');btn.className='promo-choice';
+    btn.textContent=PIECES[color==='white'?t:t.toLowerCase()];
+    btn.classList.add(color==='white'?'piece-white':'piece-black');
+    btn.onclick=()=>{document.getElementById('promo-modal').classList.remove('active');
+      pendingPromotion.promoteTo=t;
+      board[pendingPromotion.fromR][pendingPromotion.fromC].type='P';
+      executeMove(pendingPromotion);
+      board[pendingPromotion.toR][pendingPromotion.toC].type=t;
+      pendingPromotion=null;saveGameState();renderAll();};
+    cont.appendChild(btn);
+  });
+}
+
+// --- Resign flow: type "RESIGN" to confirm ---
+function showResignModal(){
+  if(gameState.status!=='active')return;
+  document.getElementById('resign-modal').classList.add('active');
+  const inp=document.getElementById('resign-input');inp.value='';
+  document.getElementById('confirm-resign-btn').disabled=true;
+  inp.oninput=()=>{document.getElementById('confirm-resign-btn').disabled=inp.value.trim()!=='RESIGN';};
+  setTimeout(()=>inp.focus(),100);
+}
+function hideResignModal(){document.getElementById('resign-modal').classList.remove('active');}
+function executeResign(){
+  hideResignModal();
+  gameState.status='finished';
+  gameState.result={winner:currentTurn==='white'?'black':'white',method:'resignation'};
+  saveGameState();renderAll();autoSubmitAndShowResult();
+}
+
+// Warn on page leave during active game
+window.addEventListener('beforeunload',e=>{
+  if(gameState&&gameState.status==='active'){e.preventDefault();e.returnValue='⚠️ Tournament match in progress!';return e.returnValue;}
+});
+
+// ═══════════════════════════════════════════════════
+// SECTION 9: RESULT SUBMISSION (auto on checkmate/stalemate)
+// ═══════════════════════════════════════════════════
+function autoSubmitAndShowResult(){
+  const modal=document.getElementById('result-modal');modal.classList.add('active');
+  const title=document.getElementById('result-title'),desc=document.getElementById('result-desc'),statusEl=document.getElementById('result-submit-status');
+  const r=gameState.result;
+  if(r.method==='checkmate'){title.textContent='♛ CHECKMATE';desc.textContent=(r.winner==='white'?playerWhiteName:playerBlackName)+' Wins!';}
+  else if(r.method==='stalemate'){title.textContent='½ STALEMATE';desc.textContent='The game is a draw.';}
+  else{title.textContent='⚑ RESIGNATION';desc.textContent=(r.winner==='white'?playerWhiteName:playerBlackName)+' Wins by Resignation!';}
+  statusEl.textContent='Submitting result…';
+  fetch(submitUrl,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({winner:r.winner==='draw'?'draw':r.winner,method:r.method,move_count:moveHistory.length})
+  }).then(x=>x.json()).then(data=>{
+    if(data.status==='ok'||data.status==='already_done'){
+      statusEl.textContent='✓ Result submitted to server!';statusEl.style.color='#4caf50';
+      try{localStorage.removeItem('match_'+matchId);}catch(e){}
+      document.getElementById('result-btns').style.display='block';
+    }else{statusEl.textContent='⚠ Server error. Retrying…';setTimeout(autoSubmitAndShowResult,3000);}
+  }).catch(()=>{statusEl.textContent='⚠ Network error. Retrying…';setTimeout(autoSubmitAndShowResult,3000);});
+}
+function startNewGame(){
+  document.getElementById('result-modal').classList.remove('active');
+  initFreshGame();renderAll();
+}
+
+// ═══════════════════════════════════════════════════
+// SECTION 10: INIT
+// ═══════════════════════════════════════════════════
+(function init(){
+  const loaded=loadGameState();
+  if(loaded){
+    renderAll();
+    if(gameState.status==='active'){showResumeBanner();}
+    else if(gameState.status==='finished'){autoSubmitAndShowResult();}
+  }else{
+    initFreshGame();renderAll();
+  }
+})();
+</script>
+{% endblock %}

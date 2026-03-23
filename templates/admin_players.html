@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Players — Admin — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+
+    {# Header #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="chess-section-title mb-1">
+          <i class="bi bi-people chess-gold"></i> Player Management
+        </h1>
+        <p class="text-muted mb-0">
+          Approve, reject, and export registrations.
+        </p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('admin_export_players') }}" class="btn chess-btn-outline btn-sm">
+          <i class="bi bi-download"></i> Export CSV
+        </a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+          ← Dashboard
+        </a>
+      </div>
+    </div>
+
+    {# ============================================================
+       PENDING APPROVALS — Action needed
+       ============================================================ #}
+    <h4 class="mb-3">
+      Pending Approval
+      <span class="badge bg-warning text-dark ms-1">{{ pending_players | length }}</span>
+    </h4>
+
+    {% if pending_players %}
+      {# Bulk approve button #}
+      <form method="POST" action="{{ url_for('admin_approve_all') }}" class="mb-3">
+        <button type="submit" class="btn chess-btn-primary btn-sm"
+                onclick="return confirm('Approve ALL {{ pending_players | length }} pending player(s)?')">
+          <i class="bi bi-check-all"></i> Approve All Pending
+        </button>
+      </form>
+
+      <div class="chess-card mb-4">
+        <div class="table-responsive">
+          <table class="table table-borderless chess-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Full Name</th>
+                <th>Roll Number</th>
+                <th>Player Username</th>
+                <th>WhatsApp</th>
+                <th>Registered</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in pending_players %}
+              <tr>
+                <td class="text-muted">{{ p.id }}</td>
+                <td><strong>{{ p.full_name }}</strong></td>
+                <td><span class="chess-mono">{{ p.roll_number }}</span></td>
+                <td>
+                  <span class="chess-mono">{{ p.chess_username }}</span>
+                </td>
+                <td><span class="chess-mono">{{ p.whatsapp }}</span></td>
+                <td>
+                  <small class="text-muted">
+                    {{ p.registered_at.strftime('%d %b %H:%M') }}
+                  </small>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    {# Approve button #}
+                    <form method="POST"
+                          action="{{ url_for('admin_approve_player', player_id=p.id) }}"
+                          style="display:inline;">
+                      <button type="submit" class="btn btn-success btn-sm"
+                              title="Approve player">
+                        <i class="bi bi-check-lg"></i>
+                      </button>
+                    </form>
+                    {# Reject / Delete button #}
+                    <form method="POST"
+                          action="{{ url_for('admin_reject_player', player_id=p.id) }}"
+                          style="display:inline;"
+                          onsubmit="return confirm('Delete {{ p.full_name }}\'s registration?')">
+                      <button type="submit" class="btn btn-danger btn-sm"
+                              title="Reject and delete">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div class="chess-card text-center py-4 mb-4 text-muted">
+        <i class="bi bi-check-circle-fill text-success fs-3"></i>
+        <p class="mt-2 mb-0">No pending registrations. All players have been reviewed.</p>
+      </div>
+    {% endif %}
+
+    {# ============================================================
+       APPROVED PLAYERS
+       ============================================================ #}
+    <h4 class="mb-3">
+      Approved Players
+      <span class="badge bg-success ms-1">{{ approved_players | length }}</span>
+    </h4>
+
+    {% if approved_players %}
+      <div class="chess-card">
+        <div class="table-responsive">
+          <table class="table table-borderless chess-table mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Full Name</th>
+                <th>Roll Number</th>
+                <th>Player Username</th>
+                <th>WhatsApp</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in approved_players %}
+              <tr class="{{ 'opacity-50' if p.is_eliminated else '' }}">
+                <td class="text-muted">{{ p.id }}</td>
+                <td><strong>{{ p.full_name }}</strong></td>
+                <td><span class="chess-mono">{{ p.roll_number }}</span></td>
+                <td>
+                  <span class="chess-mono">{{ p.chess_username }}</span>
+                </td>
+                <td><span class="chess-mono">{{ p.whatsapp }}</span></td>
+                <td>
+                  {% if p.is_eliminated %}
+                    <span class="badge bg-danger">Eliminated</span>
+                  {% else %}
+                    <span class="badge bg-success">Active</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {# Delete permanently #}
+                  <form method="POST"
+                        action="{{ url_for('admin_reject_player', player_id=p.id) }}"
+                        style="display:inline;"
+                        onsubmit="return confirm('Permanently remove {{ p.full_name }}?')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                            title="Remove player">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div class="chess-card text-center py-4 text-muted">
+        <i class="bi bi-person-x fs-3"></i>
+        <p class="mt-2 mb-0">No approved players yet. Approve registrations above.</p>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}Matches — Admin — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+
+    {# Header #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="chess-section-title mb-1">
+          <i class="bi bi-diagram-3 chess-gold"></i> Match Management
+        </h1>
+        <p class="text-muted mb-0">
+          Generate rounds, mark matches live, and record results.
+        </p>
+      </div>
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        ← Dashboard
+      </a>
+    </div>
+
+    {# ============================================================
+       GENERATE NEXT ROUND — Top-level action
+       ============================================================ #}
+    <div class="chess-card mb-4">
+      <div class="row align-items-center">
+        <div class="col">
+          <h5 class="mb-1">
+            {% if current_round == 0 %}
+              Generate Round 1
+            {% else %}
+              Generate Round {{ current_round + 1 }}
+            {% endif %}
+          </h5>
+          <p class="text-muted mb-0 small">
+            Active players (approved, not yet eliminated):
+            <strong class="chess-gold">{{ active_players }}</strong>
+            &nbsp;·&nbsp;
+            {% if can_generate %}
+              <span class="text-success">Ready to pair!</span>
+            {% elif active_players < 2 %}
+              <span class="text-danger">Need at least 2 active players.</span>
+            {% else %}
+              <span class="text-warning">
+                Finish all matches in Round {{ current_round }} first.
+              </span>
+            {% endif %}
+          </p>
+        </div>
+        <div class="col-auto">
+          <form method="POST" action="{{ url_for('admin_generate_round') }}">
+            <button type="submit"
+                    class="btn chess-btn-primary"
+                    {{ 'disabled' if not can_generate else '' }}
+                    onclick="return confirm('Generate pairings for the next round? This cannot be undone.')">
+              <i class="bi bi-shuffle"></i>
+              {% if current_round == 0 %}Generate Round 1{% else %}Generate Round {{ current_round + 1 }}{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {% if active_players == 1 %}
+        <div class="alert alert-warning mt-3 mb-0">
+          <i class="bi bi-trophy-fill chess-gold"></i>
+          <strong>We have a champion!</strong>
+          Only 1 player remains. The tournament is complete.
+          <a href="{{ url_for('admin_players') }}" class="chess-link ms-2">
+            View players →
+          </a>
+        </div>
+      {% endif %}
+
+    </div>
+
+    {# ============================================================
+       ROUNDS — Displayed in reverse order (newest first)
+       ============================================================ #}
+    {% if rounds_data %}
+      {% for round_info in rounds_data | reverse %}
+
+        <div class="mb-4">
+          {# Round header #}
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <h4 class="mb-0">
+              Round {{ round_info.round_number }}
+              {% if round_info.matches %}
+                <span class="text-muted fw-normal fs-6">
+                  — {{ round_info.matches[0].round_label or '' }}
+                </span>
+              {% endif %}
+            </h4>
+            {% if round_info.all_done %}
+              <span class="badge bg-success">All Done ✓</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">In Progress</span>
+            {% endif %}
+          </div>
+
+          {# Matches in this round #}
+          <div class="row g-3">
+            {% for match in round_info.matches %}
+              <div class="col-md-6">
+                <div class="chess-admin-match-card
+                  {{ 'completed' if match.status == 'completed' }}
+                  {{ 'live' if match.status == 'in_progress' }}
+                  {{ 'bye' if match.status == 'bye' }}
+                ">
+
+                  {# Match header with status #}
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="small text-muted">Match #{{ match.id }}</span>
+                    {% if match.status == "pending" %}
+                      <span class="badge bg-warning text-dark">Pending</span>
+                    {% elif match.status == "in_progress" %}
+                      <span class="badge bg-danger">
+                        <i class="bi bi-record-circle-fill"></i> LIVE
+                      </span>
+                    {% elif match.status == "completed" %}
+                      <span class="badge bg-success">Completed</span>
+                    {% elif match.status == "bye" %}
+                      <span class="badge bg-secondary">BYE</span>
+                    {% endif %}
+                  </div>
+
+                  {# Players #}
+                  <div class="row text-center mb-3">
+                    <div class="col">
+                      <div class="chess-mini-avatar
+                        {{ 'winner' if match.winner_id == match.player1_id and match.status in ('completed','bye') }}
+                        {{ 'loser'  if match.winner_id == match.player2_id and match.status == 'completed' }}
+                      ">♟</div>
+                      <div class="small fw-semibold mt-1">{{ match.player1.full_name }}</div>
+                      <div class="chess-mono" style="font-size:0.75rem;">
+                        {{ match.player1.chess_username }}
+                      </div>
+                      {% if match.winner_id == match.player1_id and match.status in ('completed','bye') %}
+                        <span class="badge bg-success mt-1">
+                          <i class="bi bi-trophy-fill"></i> Winner
+                        </span>
+                      {% elif match.winner_id == match.player2_id and match.status == 'completed' %}
+                        <span class="badge bg-danger mt-1">Eliminated</span>
+                      {% endif %}
+                    </div>
+
+                    <div class="col-auto d-flex align-items-center">
+                      <span class="chess-vs-small">VS</span>
+                    </div>
+
+                    <div class="col">
+                      {% if match.is_bye %}
+                        <div class="chess-mini-avatar bye">🎖</div>
+                        <div class="small fw-semibold mt-1">BYE</div>
+                        <div class="chess-mono text-muted" style="font-size:0.75rem;">—</div>
+                      {% else %}
+                        <div class="chess-mini-avatar
+                          {{ 'winner' if match.winner_id == match.player2_id and match.status == 'completed' }}
+                          {{ 'loser'  if match.winner_id == match.player1_id and match.status == 'completed' }}
+                        ">♙</div>
+                        <div class="small fw-semibold mt-1">{{ match.player2.full_name }}</div>
+                        <div class="chess-mono" style="font-size:0.75rem;">
+                          {{ match.player2.chess_username }}
+                        </div>
+                        {% if match.winner_id == match.player2_id and match.status == 'completed' %}
+                          <span class="badge bg-success mt-1">
+                            <i class="bi bi-trophy-fill"></i> Winner
+                          </span>
+                        {% elif match.winner_id == match.player1_id and match.status == 'completed' %}
+                          <span class="badge bg-danger mt-1">Eliminated</span>
+                        {% endif %}
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  {# Notes if any #}
+                  {% if match.notes %}
+                    <div class="alert alert-secondary py-1 px-2 small mb-3">
+                      <i class="bi bi-info-circle"></i> {{ match.notes }}
+                    </div>
+                  {% endif %}
+
+                  {# --- ACTION BUTTONS --- #}
+
+                  {# PENDING → Mark as Live #}
+                  {% if match.status == "pending" %}
+                    <form method="POST"
+                          action="{{ url_for('admin_start_match', match_id=match.id) }}">
+                      <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                        <i class="bi bi-play-circle"></i> Mark as LIVE
+                      </button>
+                    </form>
+                  {% endif %}
+
+                  {# PENDING or IN_PROGRESS → Set Result #}
+                  {% if match.status in ("pending", "in_progress") and not match.is_bye %}
+                    <form method="POST"
+                          action="{{ url_for('admin_set_result', match_id=match.id) }}"
+                          class="mt-2">
+                      <div class="row g-1 mb-2">
+                        <div class="col">
+                          <button type="submit" name="winner" value="player1"
+                                  class="btn btn-success btn-sm w-100"
+                                  onclick="return confirm('{{ match.player1.full_name }} wins?')">
+                            <i class="bi bi-trophy"></i>
+                            {{ match.player1.full_name | truncate(12) }} Wins
+                          </button>
+                        </div>
+                        <div class="col">
+                          <button type="submit" name="winner" value="player2"
+                                  class="btn btn-success btn-sm w-100"
+                                  onclick="return confirm('{{ match.player2.full_name }} wins?')">
+                            <i class="bi bi-trophy"></i>
+                            {{ match.player2.full_name | truncate(12) }} Wins
+                          </button>
+                        </div>
+                      </div>
+                      {# Optional notes field (for forfeit explanations etc.) #}
+                      <input type="text" name="notes" class="form-control form-control-sm chess-input"
+                             placeholder="Optional note (e.g. Player 2 forfeited)" />
+                    </form>
+                  {% endif %}
+
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      {% endfor %}
+    {% else %}
+      <div class="chess-card text-center py-5 text-muted">
+        <div style="font-size:3rem;">♟</div>
+        <h5 class="mt-3">No Rounds Yet</h5>
+        <p class="mb-0">
+          Approve players first, then click <strong>"Generate Round 1"</strong> above
+          to create the first round of pairings.
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

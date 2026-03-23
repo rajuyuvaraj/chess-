@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — {{ tournament_name }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+
+    {# Header #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="chess-section-title mb-1">
+          <i class="bi bi-shield-lock chess-gold"></i> Admin Dashboard
+        </h1>
+        <p class="text-muted mb-0">
+          Logged in as <strong>{{ session.admin_username }}</strong>
+          &nbsp;·&nbsp;
+          <a href="{{ url_for('admin_logout') }}" class="text-danger small">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </a>
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('admin_players') }}" class="btn chess-btn-outline btn-sm">
+          <i class="bi bi-people"></i> Players
+        </a>
+        <a href="{{ url_for('admin_matches') }}" class="btn chess-btn-primary btn-sm">
+          <i class="bi bi-diagram-3"></i> Matches
+        </a>
+      </div>
+    </div>
+
+    {# ============================================================
+       STATS GRID
+       ============================================================ #}
+    <div class="row g-3 mb-4">
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile">
+          <div class="chess-stat-tile-number">{{ stats.total_registered }}</div>
+          <div class="chess-stat-tile-label">Total Registered</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile warning">
+          <div class="chess-stat-tile-number">{{ stats.pending_approval }}</div>
+          <div class="chess-stat-tile-label">Pending Approval</div>
+          {% if stats.pending_approval > 0 %}
+            <a href="{{ url_for('admin_players') }}" class="chess-stat-tile-link">
+              Review →
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile success">
+          <div class="chess-stat-tile-number">{{ stats.approved }}</div>
+          <div class="chess-stat-tile-label">Approved Players</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile gold">
+          <div class="chess-stat-tile-number">{{ stats.still_active }}</div>
+          <div class="chess-stat-tile-label">Still In Tournament</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile">
+          <div class="chess-stat-tile-number">{{ stats.total_matches }}</div>
+          <div class="chess-stat-tile-label">Total Matches</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile warning">
+          <div class="chess-stat-tile-number">{{ stats.pending_matches }}</div>
+          <div class="chess-stat-tile-label">Pending Matches</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile danger">
+          <div class="chess-stat-tile-number">{{ stats.live_matches }}</div>
+          <div class="chess-stat-tile-label">Live Right Now</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="chess-stat-tile success">
+          <div class="chess-stat-tile-number">{{ stats.completed_matches }}</div>
+          <div class="chess-stat-tile-label">Completed</div>
+        </div>
+      </div>
+
+    </div>
+
+    {# ============================================================
+       QUICK ACTIONS
+       ============================================================ #}
+    <div class="row g-3 mb-4">
+      <div class="col-12">
+        <h4 class="chess-section-title mb-3">Quick Actions</h4>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <a href="{{ url_for('admin_players') }}" class="chess-action-tile">
+          <i class="bi bi-people-fill fs-2"></i>
+          <div class="mt-2 fw-semibold">Manage Players</div>
+          <div class="small text-muted">Approve / reject registrations</div>
+        </a>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <a href="{{ url_for('admin_matches') }}" class="chess-action-tile">
+          <i class="bi bi-diagram-3-fill fs-2"></i>
+          <div class="mt-2 fw-semibold">Manage Matches</div>
+          <div class="small text-muted">Generate rounds, set results</div>
+        </a>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <a href="{{ url_for('fixtures') }}" class="chess-action-tile">
+          <i class="bi bi-grid-3x3-gap-fill fs-2"></i>
+          <div class="mt-2 fw-semibold">View Fixtures</div>
+          <div class="small text-muted">Bracket cards for all rounds</div>
+        </a>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <a href="{{ url_for('leaderboard') }}" class="chess-action-tile">
+          <i class="bi bi-bar-chart-fill fs-2"></i>
+          <div class="mt-2 fw-semibold">Leaderboard</div>
+          <div class="small text-muted">Rankings &amp; player stats</div>
+        </a>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <a href="{{ url_for('admin_export_players') }}" class="chess-action-tile">
+          <i class="bi bi-file-earmark-spreadsheet-fill fs-2"></i>
+          <div class="mt-2 fw-semibold">Export Players</div>
+          <div class="small text-muted">Download full list as CSV</div>
+        </a>
+      </div>
+
+    </div>
+
+    {# ============================================================
+       ROUND CONTROL — Start All / Generate Next
+       ============================================================ #}
+    {% if current_round > 0 %}
+    <div class="chess-card mb-4">
+      {% if has_pending %}
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div>
+            <h5 class="mb-1 chess-gold">Round {{ current_round }} has pending matches</h5>
+            <p class="text-muted mb-0 small">Start all matches to let players begin playing.</p>
+          </div>
+          <form action="{{ url_for('admin_start_all', round_num=current_round) }}" method="POST">
+            <button type="submit" class="btn chess-btn-primary">
+              ▶ Start All Matches in Round {{ current_round }}
+            </button>
+          </form>
+        </div>
+      {% elif current_round_done %}
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div>
+            <h5 class="mb-1 text-success">✓ Round {{ current_round }} complete!</h5>
+            <p class="text-muted mb-0 small">{{ stats.still_active }} players remain. Generate next round when ready.</p>
+          </div>
+          <a href="{{ url_for('admin_matches') }}" class="btn chess-btn-primary">
+            ➜ Generate Round {{ current_round + 1 }}
+          </a>
+        </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ============================================================
+       LIVE MATCHES — Watch Section
+       ============================================================ #}
+    {% if live_matches %}
+    <h4 class="chess-section-title mb-3">
+      <span class="live-dot-inline"></span> Live Matches Right Now
+    </h4>
+    <div class="row g-3 mb-4">
+      {% for m in live_matches %}
+      <div class="col-md-6">
+        <div class="chess-card d-flex align-items-center justify-content-between" style="border-color:rgba(224,92,92,0.4)">
+          <div>
+            <span class="badge bg-danger me-2" style="animation:pulse 1.5s infinite">🔴 LIVE</span>
+            <strong class="chess-mono">{{ m.player1.chess_username }}</strong>
+            <span class="text-muted mx-1">vs</span>
+            <strong class="chess-mono">{{ m.player2.chess_username if m.player2 else 'BYE' }}</strong>
+            <div class="small text-muted mt-1">
+              R{{ m.round_number }} · Move {{ m.move_count or 0 }} · {{ m.current_turn or 'white' | capitalize }} to move
+            </div>
+          </div>
+          <a href="{{ url_for('admin_watch', match_id=m.id) }}" class="btn chess-btn-outline btn-sm">
+            👁 Watch
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ============================================================
+       RECENT RESULTS FEED
+       ============================================================ #}
+    {% if recent_results %}
+    <h4 class="chess-section-title mb-3">Recent Results</h4>
+    <div class="chess-card">
+      <div class="table-responsive">
+        <table class="table table-borderless chess-table mb-0">
+          <thead>
+            <tr>
+              <th>Round</th>
+              <th>Player 1</th>
+              <th>Player 2</th>
+              <th>Winner</th>
+              <th>Completed</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in recent_results %}
+            <tr>
+              <td><span class="badge bg-secondary">R{{ m.round_number }}</span></td>
+              <td>
+                {{ m.player1.full_name }}<br/>
+                <span class="chess-mono small">{{ m.player1.chess_username }}</span>
+              </td>
+              <td>
+                {% if m.player2 %}
+                  {{ m.player2.full_name }}<br/>
+                  <span class="chess-mono small">{{ m.player2.chess_username }}</span>
+                {% else %}
+                  <em class="text-muted">BYE</em>
+                {% endif %}
+              </td>
+              <td>
+                {% if m.winner %}
+                  <span class="text-success fw-bold">
+                    <i class="bi bi-trophy-fill"></i> {{ m.winner.full_name }}
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                <small class="text-muted">
+                  {% if m.completed_at %}
+                    {{ m.completed_at.strftime('%d %b, %H:%M') }}
+                  {% endif %}
+                </small>
+              </td>
+              <td><small class="text-muted">{{ m.notes or '—' }}</small></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="chess-card text-center py-4 text-muted">
+      <i class="bi bi-hourglass fs-2"></i>
+      <p class="mt-2 mb-0">No matches completed yet.</p>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

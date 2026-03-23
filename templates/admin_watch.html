@@ -6,7 +6,7 @@
 .spec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
 .live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(224,92,92,0.2);color:#f08080;font-weight:700;font-size:.85rem;padding:.4rem .8rem;border-radius:20px;animation:pulse 1.5s infinite}
 .live-badge .dot{width:8px;height:8px;border-radius:50%;background:#f08080;animation:pulse 1.5s infinite}
-.spec-board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid var(--chess-border);border-radius:4px;overflow:hidden;width:min(80vw,520px);height:min(80vw,520px);margin:0 auto}
+.spec-board{display:grid;grid-template-columns:repeat(8,12.5%);grid-template-rows:repeat(8,12.5%);border:3px solid var(--chess-border);border-radius:4px;overflow:hidden;width:min(80vw,520px);height:min(80vw,520px);margin:0 auto;box-sizing:content-box}
 .sq{display:flex;align-items:center;justify-content:center;font-size:min(7vw,48px);user-select:none;position:relative}
 .sq.lt{background:#f0d9b5}.sq.dk{background:#b58863}
 .sq.last{background:rgba(255,255,100,0.25)!important}
@@ -66,7 +66,11 @@ function renderBoard(boardState,lastMove,currentTurn){
   const el=document.getElementById('board');el.innerHTML='';
   if(!boardState)return;
   let board;
-  try{board=JSON.parse(boardState);}catch(e){return;}
+  try {
+    const s=JSON.parse(boardState);
+    board=s.board;
+  } catch(e){return;}
+  if(!board)return;
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const sq=document.createElement('div');
     sq.className='sq '+((r+c)%2===0?'lt':'dk');

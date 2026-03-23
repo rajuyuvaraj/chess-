@@ -589,10 +589,139 @@ code { color: var(--chess-gold); background: rgba(212, 168, 67, 0.12);
 }
 
 /* === RESPONSIVE =========================================================== */
+
+/* --- Tablet & below (≤768px) --- */
+@media (max-width: 768px) {
+  /* Hero */
+  .chess-hero .container { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+  .chess-display-title { font-size: 2rem; }
+  .chess-lead { font-size: 0.95rem; }
+  .hero-piece-display { font-size: 8rem; }
+
+  /* Hero buttons: stack vertically */
+  .chess-hero .d-flex.flex-wrap { flex-direction: column; gap: 0.5rem !important; }
+  .chess-hero .d-flex.flex-wrap .btn { width: 100%; }
+
+  /* Stats bar */
+  .stat-number { font-size: 1.5rem; }
+  .stat-label { font-size: 0.65rem; }
+
+  /* Cards */
+  .chess-card { padding: 1rem; }
+  .chess-card-icon { font-size: 1.5rem; }
+
+  /* Match card */
+  .chess-match-card { padding: 1.25rem; }
+  .chess-player-avatar { width: 50px; height: 50px; font-size: 1.5rem; }
+  .chess-player-name { font-size: 0.85rem; }
+  .chess-player-username { font-size: 0.72rem; }
+  .chess-vs-text { font-size: 1.2rem; }
+
+  /* Admin stat tiles */
+  .chess-stat-tile-number { font-size: 2rem; }
+  .chess-stat-tile { padding: 1rem; }
+  .chess-action-tile { padding: 1rem 0.75rem; }
+  .chess-action-tile .fs-2 { font-size: 1.3rem !important; }
+
+  /* Tables — horizontal scroll */
+  .table-responsive { -webkit-overflow-scrolling: touch; }
+  .chess-table th, .chess-table td { white-space: nowrap; font-size: 0.82rem; padding: 0.5rem 0.6rem; }
+  .leaderboard-table th, .leaderboard-table td { font-size: 0.82rem; padding: 0.5rem; white-space: nowrap; }
+
+  /* Forms */
+  .chess-form-icon { font-size: 2.8rem; }
+  .chess-input, .chess-input.form-control { padding: 0.55rem 0.75rem; font-size: 0.9rem; }
+
+  /* Buttons — larger touch targets */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 38px; font-size: 0.8rem; }
+
+  /* Admin dashboard header — stack on mobile */
+  .d-flex.justify-content-between { flex-direction: column; gap: 0.75rem; }
+
+  /* Fixture cards */
+  .fixture-players { flex-direction: column; gap: 0.25rem; text-align: center; }
+  .fixture-vs { padding: 0.15rem 0; }
+
+  /* Champion banner */
+  .champion-banner { padding: 1.25rem; }
+  .champion-icon { font-size: 3rem; }
+  .champion-name { font-size: 1.5rem; }
+
+  /* Footer */
+  .chess-footer { font-size: 0.75rem; }
+  .chess-footer p { line-height: 1.5; }
+
+  /* Alert box */
+  .chess-alert-box { padding: 1rem; }
+  .chess-alert-icon { font-size: 1.2rem; }
+
+  /* Section titles */
+  .chess-section-title { font-size: 1.25rem; }
+
+  /* CTA section */
+  .chess-cta-section .chess-display-title { font-size: 1.5rem; }
+  .chess-cta-section .lead { font-size: 0.95rem; }
+
+  /* Bracket iframe */
+  .chess-bracket-container { min-height: 400px; border-radius: var(--radius-md); }
+  .chess-bracket-iframe { min-height: 400px; }
+
+  /* Status cards */
+  .chess-status-card { padding: 0.9rem; }
+  .chess-status-value { font-size: 0.95rem; }
+
+  /* Admin match cards */
+  .chess-admin-match-card { padding: 1rem; }
+  .chess-mini-avatar { width: 36px; height: 36px; font-size: 1rem; }
+}
+
+/* --- Small phones (≤576px) --- */
 @media (max-width: 576px) {
-  .chess-display-title  { font-size: 1.7rem; }
-  .chess-match-card     { padding: 1.25rem; }
-  .stat-number          { font-size: 1.4rem; }
+  .chess-display-title { font-size: 1.6rem; }
+  .chess-lead { font-size: 0.88rem; }
+  .hero-piece-display { display: none; }  /* Hide large piece on very small screens */
+
+  .stat-number { font-size: 1.3rem; }
+  .stat-label { font-size: 0.6rem; letter-spacing: 0.04em; }
+
+  .chess-card { padding: 0.85rem; }
+  .chess-match-card { padding: 1rem; }
+
+  .chess-player-avatar { width: 44px; height: 44px; font-size: 1.3rem; }
+  .chess-player-name { font-size: 0.8rem; }
+  .chess-vs-text { font-size: 1rem; }
+  .chess-match-status { font-size: 0.78rem; padding: 0.4rem 1rem; }
+
+  .chess-stat-tile-number { font-size: 1.6rem; }
+  .chess-stat-tile-label { font-size: 0.62rem; }
+  .chess-action-tile { padding: 0.85rem 0.5rem; }
+  .chess-action-tile .mt-2.fw-semibold { font-size: 0.82rem; }
+
+  .chess-section-title { font-size: 1.1rem; }
+  .chess-form-icon { font-size: 2.2rem; }
+
+  /* Navbar brand */
+  .chess-brand { font-size: 0.9rem; }
+  .navbar-nav .nav-link { font-size: 0.85rem; padding: 0.5rem 0.6rem; }
+
+  /* Fix button overflow on registration page */
+  .d-grid .btn-lg { font-size: 0.95rem; padding: 0.65rem 1rem; }
+
+  /* Footer stack info */
+  .chess-footer .container p { font-size: 0.7rem; }
+
+  /* Admin live match card — stack vertically */
+  .chess-card.d-flex.align-items-center { flex-direction: column; text-align: center; gap: 0.75rem; }
+
+  /* Champion */
+  .champion-banner { padding: 1rem; }
+  .champion-icon { font-size: 2.5rem; }
+  .champion-name { font-size: 1.25rem; }
+  .champion-sub { font-size: 0.85rem; }
+
+  /* Leaderboard — hide less important columns */
+  .leaderboard-table .d-none-mobile { display: none; }
 }
 
 /* === FIXTURE CARDS ========================================================= */

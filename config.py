@@ -15,8 +15,8 @@ import os
 # before deploying. You can generate one with: python -c "import secrets; print(secrets.token_hex(32))"
 SECRET_KEY = os.environ.get("SECRET_KEY", "change-this-in-production-to-a-random-secret")
 
-# Path to the SQLite database file. It will be created automatically on first run.
-DATABASE_URI = "sqlite:///tournament.db"
+# Path to the database. Uses Render's DATABASE_URL if available, otherwise local SQLite.
+DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///tournament.db")
 
 # Set to False in production (hides detailed error pages from users)
 DEBUG = True

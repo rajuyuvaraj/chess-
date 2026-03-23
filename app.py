@@ -46,7 +46,13 @@ def create_app():
 
     # --- Load settings from config.py ---
     app.config["SECRET_KEY"]        = SECRET_KEY
-    app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
+    
+    # Render's Postgres URL starts with postgres://, but SQLAlchemy requires postgresql://
+    db_url = DATABASE_URI
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # Suppress a warning
     app.config["DEBUG"]             = DEBUG
 

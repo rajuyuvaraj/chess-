@@ -73,14 +73,23 @@ def create_app():
     # --- Attach database to app ---
     db.init_app(app)
 
-    # Automatically create tables and a default admin on startup (ideal for Render zero-config deploys)
+    # Automatically create tables and enforce a default admin on startup (ideal for Render zero-config deploys)
     with app.app_context():
         db.create_all()
-        if not Admin.query.first():
-            default_admin = Admin(username="chess")
-            default_admin.set_password("kala@0000")
-            db.session.add(default_admin)
-            db.session.commit()
+        
+        # Delete any admin that is not "chess"
+        for old_admin in Admin.query.all():
+            if old_admin.username != "chess":
+                db.session.delete(old_admin)
+        
+        # Ensure "chess" exists and has the correct password
+        chess_admin = Admin.query.filter_by(username="chess").first()
+        if not chess_admin:
+            chess_admin = Admin(username="chess")
+            db.session.add(chess_admin)
+            
+        chess_admin.set_password("kala@0000")
+        db.session.commit()
 
     # =========================================================================
     # CLI COMMANDS

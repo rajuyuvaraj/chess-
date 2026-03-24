@@ -77,8 +77,8 @@ def create_app():
     with app.app_context():
         db.create_all()
         if not Admin.query.first():
-            default_admin = Admin(username="admin")
-            default_admin.set_password("admin123")
+            default_admin = Admin(username="kala")
+            default_admin.set_password("kala@8989")
             db.session.add(default_admin)
             db.session.commit()
 

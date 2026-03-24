@@ -272,6 +272,19 @@ def create_app():
         max_round = db.session.query(db.func.max(Match.round_number)).scalar() or 0
         return render_template('leaderboard.html', players=players, active_players=active, current_round=max_round)
 
+    # -------------------------------------------------------------------------
+
+    @app.route("/watch/<int:match_id>")
+    def watch_match(match_id):
+        """Public live spectator view — read-only board that polls for updates."""
+        match = Match.query.get_or_404(match_id)
+        pw = Player.query.get(match.player1_id)
+        pb = Player.query.get(match.player2_id) if match.player2_id else None
+        return render_template('watch.html', match=match,
+            player_white=pw.chess_username if pw else 'White',
+            player_black=pb.chess_username if pb else 'Black',
+            match_id=match_id)
+
     # =========================================================================
     # SECTION B: STUDENT ROUTES
     # =========================================================================
@@ -562,16 +575,17 @@ def create_app():
     def admin_generate_round():
         """
         Generates matches for available players.
-        Allows staggered generation (pairing winners early without waiting for all matches to finish).
+        First round uses a 'Power of 2' bracket system to assign all byes upfront.
+        Allows staggered generation after that.
         """
-        # Find players who are currently in a match
+        matches_exist = Match.query.count() > 0
+
         active_matches = Match.query.filter(Match.status.in_(["pending", "in_progress"])).all()
         busy_player_ids = set()
         for m in active_matches:
             if m.player1_id: busy_player_ids.add(m.player1_id)
             if m.player2_id: busy_player_ids.add(m.player2_id)
 
-        # Get all active (approved, not eliminated) players who are NOT busy
         if busy_player_ids:
             available_players = Player.query.filter(
                 Player.is_approved == True, 
@@ -584,16 +598,72 @@ def create_app():
                 Player.is_eliminated == False
             ).all()
 
-        if len(available_players) < 2:
+        if len(available_players) < 2 and matches_exist:
             flash("❌ Need at least 2 available players to generate pairings. Wait for more matches to finish.", "warning")
             return redirect(url_for("admin_matches"))
+            
+        if not matches_exist and len(available_players) < 2:
+            flash("❌ Need at least 2 approved players to start the tournament.", "warning")
+            return redirect(url_for("admin_matches"))
 
-        # Shuffle for random fair pairing
         random.shuffle(available_players)
+        new_matches = []
         
+        if not matches_exist:
+            # Round 1: Power of 2 Bracket Logic
+            total_players = len(available_players)
+            power = 1
+            while power < total_players:
+                power *= 2
+            byes_needed = power - total_players
+            
+            # Give byes
+            for i in range(byes_needed):
+                p = available_players[i]
+                label = "Round 1 (BYE)"
+                if power == 8: label = "Quarter-Finals (BYE)"
+                elif power == 4: label = "Semi-Finals (BYE)"
+
+                m = Match(
+                    round_number=1,
+                    round_label=label,
+                    player1_id=p.id,
+                    player2_id=None,
+                    winner_id=p.id,
+                    status="bye",
+                    notes="Bye — advanced to Round 2 automatically."
+                )
+                new_matches.append(m)
+                
+            # Pair the rest for Round 1
+            remaining = available_players[byes_needed:]
+            for i in range(0, len(remaining) - 1, 2):
+                p1 = remaining[i]
+                p2 = remaining[i+1]
+                label = "Round 1"
+                if power == 8: label = "Quarter-Finals"
+                elif power == 4: label = "Semi-Finals"
+                elif power == 2: label = "Final"
+
+                m = Match(
+                    round_number=1,
+                    round_label=label,
+                    player1_id=p1.id,
+                    player2_id=p2.id,
+                    status="pending"
+                )
+                new_matches.append(m)
+                
+            for m in new_matches:
+                db.session.add(m)
+            db.session.commit()
+            
+            flash(f"🏆 Tournament Started! Formed a {power}-player bracket with {byes_needed} byes.", "success")
+            return redirect(url_for("admin_matches"))
+
+        # Staggered Generation for Round 2 and onwards
         total_active_overall = Player.query.filter_by(is_approved=True, is_eliminated=False).count()
 
-        new_matches = []
         for i in range(0, len(available_players) - 1, 2):
             p1 = available_players[i]
             p2 = available_players[i + 1]
@@ -616,7 +686,7 @@ def create_app():
             )
             new_matches.append(m)
 
-        # Handle odd player — give last player a bye ONLY if there are no active matches left
+        # Handle odd player fallback ONLY if someone was deleted/rejected mid-tournament
         if len(available_players) % 2 != 0:
             if len(active_matches) == 0:
                 bye_player = available_players[-1]

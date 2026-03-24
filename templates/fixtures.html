@@ -78,8 +78,8 @@
             {% if m.status == 'in_progress' %}
               {% if session.get('student_id') in [m.player1_id, m.player2_id] %}
                 <a href="{{ url_for('play_match', match_id=m.id) }}" class="btn chess-btn-primary btn-sm w-100 mt-2">♟ Play Match</a>
-              {% elif session.get('admin_logged_in') %}
-                <a href="{{ url_for('admin_watch', match_id=m.id) }}" class="btn chess-btn-outline btn-sm w-100 mt-2">👁 Watch Live</a>
+              {% else %}
+                <a href="{{ url_for('watch_match', match_id=m.id) }}" class="btn chess-btn-outline btn-sm w-100 mt-2">👁 Watch Live</a>
               {% endif %}
             {% endif %}
 

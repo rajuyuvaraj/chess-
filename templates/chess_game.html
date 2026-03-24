@@ -299,8 +299,10 @@ function showResumeBanner(){
 // ═══════════════════════════════════════════════════
 function renderAll(){
   const boardEl=document.getElementById('board');boardEl.innerHTML='';
+  const isFlipped = (myColor === 'black');
   for(let ri=0;ri<8;ri++)for(let ci=0;ci<8;ci++){
-    const r=ri,c=ci;
+    const r = isFlipped ? 7 - ri : ri;
+    const c = isFlipped ? 7 - ci : ci;
     const sq=document.createElement('div');
     const isLight=(r+c)%2===0;
     sq.className='square '+(isLight?'light':'dark');
@@ -312,8 +314,8 @@ function renderAll(){
     const isLegal=legalMovesCache.some(m=>m.toR===r&&m.toC===c);
     if(isLegal){const ind=document.createElement('div');ind.className=piece?'capture-ring':'move-dot';sq.appendChild(ind);}
     // Coordinates
-    if(ci===0){const lbl=document.createElement('span');lbl.className='coord-rank';lbl.textContent=RANKS[ri];sq.appendChild(lbl);}
-    if(ri===7){const lbl=document.createElement('span');lbl.className='coord-file';lbl.textContent=FILES[ci];sq.appendChild(lbl);}
+    if(ci===0){const lbl=document.createElement('span');lbl.className='coord-rank';lbl.textContent=RANKS[r];sq.appendChild(lbl);}
+    if(ri===7){const lbl=document.createElement('span');lbl.className='coord-file';lbl.textContent=FILES[c];sq.appendChild(lbl);}
     sq.addEventListener('click',()=>handleClick(r,c));
     sq.addEventListener('touchend',e=>{e.preventDefault();handleClick(r,c);});
     boardEl.appendChild(sq);
@@ -321,13 +323,17 @@ function renderAll(){
   renderPanel();
 }
 function renderPanel(){
-  document.getElementById('name-top').textContent='♚ '+playerBlackName;
-  document.getElementById('name-bottom').textContent='♔ '+playerWhiteName;
+  const isFlipped = (myColor === 'black');
+  
+  document.getElementById('name-top').textContent = isFlipped ? '♔ ' + playerWhiteName : '♚ ' + playerBlackName;
+  document.getElementById('name-bottom').textContent = isFlipped ? '♚ ' + playerBlackName : '♔ ' + playerWhiteName;
+  
   const sortC=a=>[...a].sort((a,b)=>PIECE_VAL[b]-PIECE_VAL[a]);
-  document.getElementById('cap-top').textContent=sortC(capturedPieces.white).map(t=>PIECES[t]).join('');
-  document.getElementById('cap-bottom').textContent=sortC(capturedPieces.black).map(t=>PIECES[t.toLowerCase()]).join('');
-  document.getElementById('bar-top').classList.toggle('active-turn',currentTurn==='black'&&gameState.status==='active');
-  document.getElementById('bar-bottom').classList.toggle('active-turn',currentTurn==='white'&&gameState.status==='active');
+  document.getElementById('cap-top').textContent = isFlipped ? sortC(capturedPieces.black).map(t=>PIECES[t.toLowerCase()]).join('') : sortC(capturedPieces.white).map(t=>PIECES[t]).join('');
+  document.getElementById('cap-bottom').textContent = isFlipped ? sortC(capturedPieces.white).map(t=>PIECES[t]).join('') : sortC(capturedPieces.black).map(t=>PIECES[t.toLowerCase()]).join('');
+  
+  document.getElementById('bar-top').classList.toggle('active-turn', currentTurn === (isFlipped ? 'white' : 'black') && gameState.status === 'active');
+  document.getElementById('bar-bottom').classList.toggle('active-turn', currentTurn === (isFlipped ? 'black' : 'white') && gameState.status === 'active');
   const sb=document.getElementById('status-bar');sb.classList.remove('in-check','game-over');
   if(gameState.status==='finished'){sb.classList.add('game-over');const r=gameState.result;
     if(r.method==='checkmate')sb.textContent='♛ Checkmate — '+(r.winner==='white'?playerWhiteName:playerBlackName)+' Wins!';
@@ -501,6 +507,7 @@ function handleTimeout(colorOut) {
                board=s.board; currentTurn=s.currentTurn; moveHistory=s.moveHistory;
                capturedPieces=s.capturedPieces; castlingRights=s.castlingRights;
                enPassantTarget=s.enPassantTarget; lastMove=s.lastMove; gameState=s.gameState;
+               if(s.timers) timers=s.timers;
                renderAll();
             }
           } catch(e) {}
